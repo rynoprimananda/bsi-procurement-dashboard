@@ -2046,7 +2046,7 @@ async function fetchDriveFile(key) {
   if (!resp.ok) throw new Error(`HTTP ${resp.status} for key=${key}`);
   const json = await resp.json();
   if (!json.ok) throw new Error(json.error || `Unknown error for key=${key}`);
-  return json; // { ok, name, base64, updated, size }
+  return json;
 }
 
 function setCardStatus(key, text, isOk) {
@@ -2058,14 +2058,67 @@ function setCardStatus(key, text, isOk) {
   if (isOk === false) { card.style.borderColor='rgba(179,48,48,0.4)'; }
 }
 
-function parseBase64WithXLSX(base64, opts={}) {
-  const wb = XLSX.read(base64, { type:'base64', cellDates: true, ...opts });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:false });
+// Convert server row (date strings) to dashboard format (Date objects)
+function mapServerRow(r) {
+  return {
+    orderNo:      r.orderNo,      whse:         r.whse,
+    status:       r.status,       suppCode:     r.suppCode,
+    suppName:     r.suppName,     itemCode:     r.itemCode,
+    itemDesc:     r.itemDesc,
+    orderDate:    r.orderDate ? new Date(r.orderDate) : null,
+    recvDate:     r.recvDate  ? new Date(r.recvDate)  : null,
+    ordQty:       r.ordQty,       ordValueUSD:  r.ordValueUSD,
+    isConsignment:r.isConsignment, leadTime:    r.leadTime,
+    unitPrice:    r.unitPrice,    isServ:       r.isServ,
+    isWspc:       r.isWspc,
+    anomalyTypes: r.anomalyTypes || [],
+    hasAnomaly:   r.hasAnomaly   || false,
+    priceZScore:  r.priceZScore,  leadZScore:   r.leadZScore,
+    qtyZScore:    r.qtyZScore,    itemAvgPrice: r.itemAvgPrice,
+    // DI / Val fields — filled in by enrich functions below
+    diMovement:'Not in DI', diCode:'', diRisk:'none',
+    invQtyOnHand:0, invOnHandVal:0, invAvgCost:0,
+    invPg:'', invPgCode:'', invAbcClass:'', hasInventory:false
+  };
+}
+
+// ════════════════════════════════════════════════════════
+//  DAILY CACHE  (localStorage, expires at midnight)
+// ════════════════════════════════════════════════════════
+const CACHE_DATE = new Date().toISOString().split('T')[0]; // "2026-03-30"
+const CACHE_PREFIX = 'bsi_';
+
+function cacheLoad(key) {
+  try {
+    if (localStorage.getItem(CACHE_PREFIX + 'date') !== CACHE_DATE) return null;
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function cacheSave(key, data) {
+  try {
+    // Clear previous day's cache on first save of the day
+    if (localStorage.getItem(CACHE_PREFIX + 'date') !== CACHE_DATE) {
+      ['order','recv','di','val','txn'].forEach(k => localStorage.removeItem(CACHE_PREFIX + k));
+      localStorage.setItem(CACHE_PREFIX + 'date', CACHE_DATE);
+    }
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(data));
+  } catch(e) {
+    // QuotaExceededError — storage full, skip silently
+    console.warn('Cache write skipped (storage full):', key);
+  }
+}
+
+function cacheCardStatus(key, fromCache) {
+  if (!fromCache) return;
+  const el = document.getElementById('status-' + key);
+  if (el && el.textContent.startsWith('✓')) {
+    el.textContent = el.textContent + '  📦 cached';
+  }
 }
 
 async function autoLoadFromDrive() {
-  // Reset state
   state.datasets = { order:null, recv:null };
   state.diLookup = {}; state.valLookup = {}; state.txnStats = {};
 
@@ -2074,157 +2127,131 @@ async function autoLoadFromDrive() {
 
   let anyPrimaryLoaded = false;
   let latestUpdate = null;
+  let allFromCache = true;
 
-  // ── ORDER DATE ──
+  // ── ORDER DATE ──────────────────────────────────────────
   try {
-    setCardStatus('order', '⏳ Fetching…', null);
-    const r = await fetchDriveFile('order');
-    const rows = parseBase64WithXLSX(r.base64, {cellDates:true});
-    state.datasets.order = processRows(rows);
-    const n = state.datasets.order.length;
-    setCardStatus('order', `✓ ${n.toLocaleString()} rows  (${r.name})`, true);
+    setCardStatus('order', '⏳ Checking cache…', null);
+    let cached = cacheLoad('order');
+    if (cached) {
+      state.datasets.order = cached.rows.map(mapServerRow);
+      setCardStatus('order', `✓ ${cached.rowCount.toLocaleString()} rows  (${cached.name})`, true);
+      cacheCardStatus('order', true);
+      if (!latestUpdate || cached.updated > latestUpdate) latestUpdate = cached.updated;
+    } else {
+      allFromCache = false;
+      setCardStatus('order', '⏳ Fetching from Drive…', null);
+      const r = await fetchDriveFile('order');
+      state.datasets.order = r.rows.map(mapServerRow);
+      setCardStatus('order', `✓ ${r.rowCount.toLocaleString()} rows  (${r.name})`, true);
+      cacheSave('order', {rows: r.rows, rowCount: r.rowCount, name: r.name, updated: r.updated});
+      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
+    }
     anyPrimaryLoaded = true;
-    if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
   } catch(e) {
     setCardStatus('order', `✗ Not available`, false);
     console.warn('Order file:', e.message);
   }
 
-  // ── RECEIVED DATE ──
+  // ── RECEIVED DATE ───────────────────────────────────────
   try {
-    setCardStatus('recv', '⏳ Fetching…', null);
-    const r = await fetchDriveFile('recv');
-    const rows = parseBase64WithXLSX(r.base64, {cellDates:true});
-    state.datasets.recv = processRows(rows);
-    const n = state.datasets.recv.length;
-    setCardStatus('recv', `✓ ${n.toLocaleString()} rows  (${r.name})`, true);
+    setCardStatus('recv', '⏳ Checking cache…', null);
+    let cached = cacheLoad('recv');
+    if (cached) {
+      state.datasets.recv = cached.rows.map(mapServerRow);
+      setCardStatus('recv', `✓ ${cached.rowCount.toLocaleString()} rows  (${cached.name})`, true);
+      cacheCardStatus('recv', true);
+      if (!latestUpdate || cached.updated > latestUpdate) latestUpdate = cached.updated;
+    } else {
+      allFromCache = false;
+      setCardStatus('recv', '⏳ Fetching from Drive…', null);
+      const r = await fetchDriveFile('recv');
+      state.datasets.recv = r.rows.map(mapServerRow);
+      setCardStatus('recv', `✓ ${r.rowCount.toLocaleString()} rows  (${r.name})`, true);
+      cacheSave('recv', {rows: r.rows, rowCount: r.rowCount, name: r.name, updated: r.updated});
+      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
+    }
     anyPrimaryLoaded = true;
-    if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
   } catch(e) {
     setCardStatus('recv', `✗ Not available`, false);
     console.warn('Recv file:', e.message);
   }
 
-  // ── DI MOVEMENT ──
+  // ── DI MOVEMENT (optional) ──────────────────────────────
   try {
-    setCardStatus('di', '⏳ Fetching…', null);
-    const r = await fetchDriveFile('di');
-    const rows = parseBase64WithXLSX(r.base64);
-    // Re-use DI parsing logic inline (same as parseDIFile internals)
-    const lookup = {};
-    let itemCol=-1, movCol=-1, codeCol=-1;
-    for (let ri=0; ri<Math.min(5,rows.length); ri++) {
-      const row=rows[ri]; if(!row) continue;
-      row.forEach((cell,i)=>{ const v=(cell||'').toString().toLowerCase().trim();
-        if(v.includes('item code')) itemCol=i;
-        if(v.includes('class movement')&&!v.includes('code')) movCol=i;
-        if(v.includes('class movement')&&v.includes('code')) codeCol=i;
-      });
-      if(itemCol>=0&&movCol>=0) break;
+    setCardStatus('di', '⏳ Checking cache…', null);
+    let cached = cacheLoad('di');
+    if (cached) {
+      state.diLookup = cached.lookup;
+      setCardStatus('di', `✓ ${Object.keys(cached.lookup).length.toLocaleString()} items classified`, true);
+      cacheCardStatus('di', true);
+    } else {
+      setCardStatus('di', '⏳ Fetching from Drive…', null);
+      const r = await fetchDriveFile('di');
+      state.diLookup = r.lookup;
+      setCardStatus('di', `✓ ${Object.keys(r.lookup).length.toLocaleString()} items classified`, true);
+      cacheSave('di', {lookup: r.lookup, updated: r.updated});
+      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
     }
-    if (itemCol>=0) {
-      for (let ri=1; ri<rows.length; ri++) {
-        const row=rows[ri]; if(!row) continue;
-        let code=(row[itemCol]||'').toString().trim();
-        if(code.startsWith("'")) code=code.slice(1).trim();
-        if(!code) continue;
-        const movement=(row[movCol]||'').toString().trim();
-        const mvCode=codeCol>=0?(row[codeCol]||'').toString().trim():'';
-        lookup[code]={ movement:movement||'Unspecified', code:mvCode };
-      }
-    }
-    state.diLookup = lookup;
-    const n = Object.keys(lookup).length;
-    setCardStatus('di', `✓ ${n.toLocaleString()} items classified`, true);
   } catch(e) {
-    setCardStatus('di', `⚠ Not found — movement analysis disabled`, false);
-    console.warn('DI file:', e.message);
+    // OPTIONAL — do not block dashboard
+    setCardStatus('di', `— Not available (movement analysis disabled)`, null);
+    console.warn('DI file (optional):', e.message);
   }
 
-  // ── INVENTORY VALUATION ──
+  // ── INVENTORY VALUATION (optional) ─────────────────────
   try {
-    setCardStatus('val', '⏳ Fetching…', null);
-    const r = await fetchDriveFile('val');
-    const rows = parseBase64WithXLSX(r.base64);
-    // Re-use val parsing logic inline (same as parseValFile internals)
-    const lookup = {};
-    let cols = {};
-    for (let ri=0; ri<Math.min(5,rows.length); ri++) {
-      const row=rows[ri]; if(!row) continue;
-      row.forEach((cell,i)=>{ const v=(cell||'').toString().toLowerCase().trim();
-        if(v==='item code.1'||v==='sort by') cols.itemCode=cols.itemCode??i;
-        if(v==='item code'&&!cols.itemCode&&i<6) cols.itemCode=i;
-        if(v==='description'&&!v.includes('sort')) cols.desc=cols.desc??i;
-        if(v==='product group code') cols.pgCode=i;
-        if(v==='product group') cols.pg=i;
-        if(v==='abc class code') cols.abcClass=i;
-        if(v==='whse. code'||v==='whse code') cols.whseCode=i;
-        if(v==='warehouse') cols.warehouse=i;
-        if(v==='average cost') cols.avgCost=i;
-        if(v==='qty on hand') cols.qtyOnHand=i;
-        if(v==='on hand value') cols.onHandVal=i;
-        if(v==='consign. qty'||v==='consign qty') cols.consignQty=i;
-        if(v==='consign. value'||v==='consign value') cols.consignVal=i;
-      });
-      if(cols.itemCode!==undefined&&cols.onHandVal!==undefined) break;
+    setCardStatus('val', '⏳ Checking cache…', null);
+    let cached = cacheLoad('val');
+    if (cached) {
+      state.valLookup = cached.lookup;
+      setCardStatus('val', `✓ ${Object.keys(cached.lookup).length.toLocaleString()} SKUs valued`, true);
+      cacheCardStatus('val', true);
+    } else {
+      setCardStatus('val', '⏳ Fetching from Drive…', null);
+      const r = await fetchDriveFile('val');
+      state.valLookup = r.lookup;
+      setCardStatus('val', `✓ ${Object.keys(r.lookup).length.toLocaleString()} SKUs valued`, true);
+      cacheSave('val', {lookup: r.lookup, updated: r.updated});
+      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
     }
-    for (let ri=1; ri<rows.length; ri++) {
-      const row=rows[ri]; if(!row) continue;
-      let code='';
-      if(rows[0]&&(rows[0][1]||'').toString().trim()==='Sort By') code=(row[1]||'').toString().trim();
-      else if(cols.itemCode!==undefined) code=(row[cols.itemCode]||'').toString().trim();
-      if(!code||code.startsWith('http')) continue;
-      if(code.startsWith("'")) code=code.slice(1).trim();
-      const qtyOnHand=parseFloat(row[cols.qtyOnHand]||0)||0;
-      const onHandVal=parseFloat(row[cols.onHandVal]||0)||0;
-      const avgCost=parseFloat(row[cols.avgCost]||0)||0;
-      if(!lookup[code]) lookup[code]=[];
-      lookup[code].push({
-        qtyOnHand, onHandVal, avgCost,
-        pgCode:(row[cols.pgCode]||'').toString().trim(),
-        pg:(row[cols.pg]||'').toString().trim(),
-        abcClass:(row[cols.abcClass]||'').toString().trim(),
-        whseCode:(row[cols.whseCode]||'').toString().trim(),
-        warehouse:(row[cols.warehouse]||'').toString().trim(),
-        desc:(row[cols.desc]||'').toString().trim(),
-        consignQty:parseFloat(row[cols.consignQty]||0)||0,
-        consignVal:parseFloat(row[cols.consignVal]||0)||0,
-      });
-    }
-    state.valLookup = lookup;
-    const n = Object.keys(lookup).length;
-    setCardStatus('val', `✓ ${n.toLocaleString()} SKUs valued`, true);
   } catch(e) {
-    setCardStatus('val', `⚠ Not found — valuation analysis disabled`, false);
-    console.warn('Val file:', e.message);
+    // OPTIONAL — do not block dashboard
+    setCardStatus('val', `— Not available (valuation analysis disabled)`, null);
+    console.warn('Val file (optional):', e.message);
   }
 
-  // ── TRANSACTION / USAGE ──
+  // ── TRANSACTION / USAGE (optional) ─────────────────────
   try {
-    setCardStatus('txn', '⏳ Fetching…', null);
-    const r = await fetchDriveFile('txn');
-    // parseTxnFile accepts a File; re-wrap base64 bytes as a Blob so it stays compatible
-    const binary = atob(r.base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i=0; i<binary.length; i++) bytes[i]=binary.charCodeAt(i);
-    const blob = new Blob([bytes]);
-    state.txnStats = await parseTxnFile(blob);
-    const n = Object.keys(state.txnStats).length;
-    setCardStatus('txn', `✓ ${n.toLocaleString()} items tracked`, true);
+    setCardStatus('txn', '⏳ Checking cache…', null);
+    let cached = cacheLoad('txn');
+    if (cached) {
+      state.txnStats = cached.stats;
+      setCardStatus('txn', `✓ ${Object.keys(cached.stats).length.toLocaleString()} items tracked`, true);
+      cacheCardStatus('txn', true);
+    } else {
+      setCardStatus('txn', '⏳ Fetching from Drive…', null);
+      const r = await fetchDriveFile('txn');
+      state.txnStats = r.stats;
+      setCardStatus('txn', `✓ ${Object.keys(r.stats).length.toLocaleString()} items tracked`, true);
+      cacheSave('txn', {stats: r.stats, updated: r.updated});
+      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
+    }
   } catch(e) {
-    setCardStatus('txn', `⚠ Not found — usage analysis disabled`, false);
-    console.warn('Txn file:', e.message);
+    // OPTIONAL — do not block dashboard
+    setCardStatus('txn', `— Not available (usage analysis disabled)`, null);
+    console.warn('Txn file (optional):', e.message);
   }
 
+  // ── ABORT if neither primary file loaded ────────────────
   if (!anyPrimaryLoaded) {
-    // Nothing loaded — show error and let user upload manually
     document.getElementById('auto-load-desc').textContent = 'Could not connect to Google Drive data source.';
     document.getElementById('auto-load-error').style.display = '';
     document.getElementById('auto-load-note').style.display = 'none';
     return;
   }
 
-  // Enrich with DI + Valuation
+  // ── Enrich with DI + Valuation ──────────────────────────
   if (Object.keys(state.diLookup).length > 0) {
     if (state.datasets.order) enrichWithDI(state.datasets.order);
     if (state.datasets.recv)  enrichWithDI(state.datasets.recv);
@@ -2234,7 +2261,7 @@ async function autoLoadFromDrive() {
     if (state.datasets.recv)  enrichWithVal(state.datasets.recv);
   }
 
-  // Update nav timestamp
+  // ── Update nav timestamp ────────────────────────────────
   if (latestUpdate) {
     const d = new Date(latestUpdate);
     const label = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
@@ -2242,9 +2269,13 @@ async function autoLoadFromDrive() {
     if (ticker) ticker.textContent = `Data as of ${label}`;
   }
 
-  document.getElementById('auto-load-desc').textContent = 'All data loaded successfully from Google Drive.';
-  document.getElementById('auto-load-note').textContent = 'Data is refreshed daily. Click "Open Dashboard" to proceed.';
-  document.getElementById('launch-btn').style.display = '';
+  // ── Show launch button (always clickable once primary data loaded) ──
+  const fromCacheMsg = allFromCache ? ' (loaded from today\'s cache — instant!)' : '';
+  document.getElementById('auto-load-desc').textContent = 'All data loaded successfully from Google Drive.' + fromCacheMsg;
+  document.getElementById('auto-load-note').textContent = 'Data is cached daily. Next refresh: tomorrow. Click "Open Dashboard" to proceed.';
+  const btn = document.getElementById('launch-btn');
+  btn.style.display = '';
+  btn.classList.add('ready'); // ← make it clickable
 }
 
 function launchWithLoadedData() {
@@ -2269,17 +2300,22 @@ function launchWithLoadedData() {
 }
 
 async function refreshDashboard() {
-  // Go back to load screen and re-fetch
+  // Clear today's cache so fresh data is fetched from Drive
+  try {
+    ['order','recv','di','val','txn'].forEach(k => localStorage.removeItem(CACHE_PREFIX + k));
+    localStorage.removeItem(CACHE_PREFIX + 'date');
+  } catch(e) {}
+
   document.getElementById('dashboard').classList.remove('active');
   document.getElementById('nav-ticker').style.display = 'none';
   document.getElementById('nav-refresh-btn').style.display = 'none';
-  // Reset card statuses
   ['order','recv','di','val','txn'].forEach(k => {
     setCardStatus(k, '⏳ Fetching from Drive…', null);
     const card = document.getElementById('card-'+k);
     if (card) { card.classList.remove('loaded'); card.style.borderColor=''; }
   });
   document.getElementById('launch-btn').style.display = 'none';
+  document.getElementById('launch-btn').classList.remove('ready');
   document.getElementById('auto-load-error').style.display = 'none';
   document.getElementById('auto-load-desc').textContent = 'Refreshing data from Google Drive…';
   document.getElementById('upload-screen').style.display = '';
