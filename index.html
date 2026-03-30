@@ -2025,7 +2025,7 @@ const CHART_COLORS = [
 // ════════════════════════════════════════════════════════
 const DRIVE_CONFIG = {
   // Paste your deployed Apps Script Web App URL here:
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx9l_pxwSDDzDx_OL9V5pWwLKA2qWJEN54QfXpoJyQPWC3rOp8twyKyTwqYKaw_-msHKg/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx3g7u7eFyjpDeD8BJMg0SdP3nPaU8dOgz126k2fcPI7n4PGXr9hbGVM65pUxNV87nIfQ/exec',
   // File name patterns — partial match, case-insensitive.
   // As long as the file in Drive CONTAINS these strings in the name, it will be found.
   FILE_PATTERNS: {
@@ -2040,81 +2040,10 @@ const DRIVE_CONFIG = {
 // ════════════════════════════════════════════════════════
 //  AUTO-LOAD FROM GOOGLE DRIVE
 // ════════════════════════════════════════════════════════
-// JSONP fetch — bypasses CORS using <script> tag instead of fetch()
-// Required for Google Workspace environments where CORS blocks direct fetch
-function fetchViaJSONP(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'bsi_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const script = document.createElement('script');
-    const timer = setTimeout(() => {
-      cleanup(); reject(new Error('JSONP timeout after 60s'));
-    }, 60000);
-    function cleanup() {
-      clearTimeout(timer); delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-    window[cbName] = (data) => { cleanup(); resolve(data); };
-    script.onerror = () => { cleanup(); reject(new Error('JSONP script load failed')); };
-    script.src = url + '&callback=' + cbName;
-    document.head.appendChild(script);
-  });
-}
-
-async function fetchDriveFile(key) {
-  const url = `${DRIVE_CONFIG.APPS_SCRIPT_URL}?file=${key}&t=${Date.now()}`;
-  // Try direct fetch first; fall back to JSONP if CORS blocks it
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || `Script error`);
-    return json;
-  } catch(fetchErr) {
-    // CORS blocked — use JSONP which is not subject to CORS restrictions
-    console.warn(`Direct fetch blocked for [${key}], switching to JSONP:`, fetchErr.message);
-    const json = await fetchViaJSONP(url);
-    if (!json.ok) throw new Error(json.error || `Script error via JSONP`);
-    return json;
-  }
-}
-
-function setCardStatus(key, text, isOk) {
-  const el = document.getElementById('status-'+key);
-  const card = document.getElementById('card-'+key);
-  if (!el) return;
-  el.textContent = text;
-  if (isOk === true)  { card.classList.add('loaded'); card.style.borderColor=''; }
-  if (isOk === false) { card.style.borderColor='rgba(179,48,48,0.4)'; }
-}
-
-// Convert server row (date strings) to dashboard format (Date objects)
-function mapServerRow(r) {
-  return {
-    orderNo:      r.orderNo,      whse:         r.whse,
-    status:       r.status,       suppCode:     r.suppCode,
-    suppName:     r.suppName,     itemCode:     r.itemCode,
-    itemDesc:     r.itemDesc,
-    orderDate:    r.orderDate ? new Date(r.orderDate) : null,
-    recvDate:     r.recvDate  ? new Date(r.recvDate)  : null,
-    ordQty:       r.ordQty,       ordValueUSD:  r.ordValueUSD,
-    isConsignment:r.isConsignment, leadTime:    r.leadTime,
-    unitPrice:    r.unitPrice,    isServ:       r.isServ,
-    isWspc:       r.isWspc,
-    anomalyTypes: r.anomalyTypes || [],
-    hasAnomaly:   r.hasAnomaly   || false,
-    priceZScore:  r.priceZScore,  leadZScore:   r.leadZScore,
-    qtyZScore:    r.qtyZScore,    itemAvgPrice: r.itemAvgPrice,
-    // DI / Val fields — filled in by enrich functions below
-    diMovement:'Not in DI', diCode:'', diRisk:'none',
-    invQtyOnHand:0, invOnHandVal:0, invAvgCost:0,
-    invPg:'', invPgCode:'', invAbcClass:'', hasInventory:false
-  };
-}
-
-// ════════════════════════════════════════════════════════
-//  DAILY CACHE  (localStorage, expires at midnight)
-// ════════════════════════════════════════════════════════
-const CACHE_DATE = new Date().toISOString().split('T')[0]; // "2026-03-30"
+// ════════════════════════════════════════════════
+//  DAILY CACHE  (localStorage, resets at midnight)
+// ════════════════════════════════════════════════
+const CACHE_DATE   = new Date().toISOString().split('T')[0];
 const CACHE_PREFIX = 'bsi_';
 
 function cacheLoad(key) {
@@ -2127,152 +2056,212 @@ function cacheLoad(key) {
 
 function cacheSave(key, data) {
   try {
-    // Clear previous day's cache on first save of the day
     if (localStorage.getItem(CACHE_PREFIX + 'date') !== CACHE_DATE) {
       ['order','recv','di','val','txn'].forEach(k => localStorage.removeItem(CACHE_PREFIX + k));
       localStorage.setItem(CACHE_PREFIX + 'date', CACHE_DATE);
     }
     localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(data));
-  } catch(e) {
-    // QuotaExceededError — storage full, skip silently
-    console.warn('Cache write skipped (storage full):', key);
-  }
+  } catch(e) { console.warn('Cache write skipped:', key, e.message); }
 }
 
-function cacheCardStatus(key, fromCache) {
-  if (!fromCache) return;
-  const el = document.getElementById('status-' + key);
-  if (el && el.textContent.startsWith('✓')) {
-    el.textContent = el.textContent + '  📦 cached';
-  }
+function cacheClear() {
+  try {
+    ['order','recv','di','val','txn'].forEach(k => localStorage.removeItem(CACHE_PREFIX + k));
+    localStorage.removeItem(CACHE_PREFIX + 'date');
+  } catch(e) {}
 }
 
+// ════════════════════════════════════════════════
+//  DRIVE FILE FETCH  (base64, browser parses)
+// ════════════════════════════════════════════════
+async function fetchDriveFile(key) {
+  const url = DRIVE_CONFIG.APPS_SCRIPT_URL + '?file=' + key + '&t=' + Date.now();
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || 'Script error for key=' + key);
+  return json; // { ok, name, base64, updated, sizeKb }
+}
+
+function parseBase64(base64, opts) {
+  const wb = XLSX.read(base64, Object.assign({ type:'base64', cellDates:true }, opts||{}));
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:false });
+}
+
+function setCardStatus(key, text, isOk) {
+  const el   = document.getElementById('status-' + key);
+  const card = document.getElementById('card-'   + key);
+  if (!el) return;
+  el.textContent = text;
+  if (isOk === true)  { card.classList.add('loaded'); card.style.borderColor = ''; }
+  if (isOk === false) { card.style.borderColor = 'rgba(179,48,48,0.4)'; }
+}
+
+// ════════════════════════════════════════════════
+//  AUTO-LOAD ORCHESTRATOR
+// ════════════════════════════════════════════════
 async function autoLoadFromDrive() {
-  state.datasets = { order:null, recv:null };
-  state.diLookup = {}; state.valLookup = {}; state.txnStats = {};
+  state.datasets  = { order:null, recv:null };
+  state.diLookup  = {}; state.valLookup = {}; state.txnStats = {};
 
   document.getElementById('auto-load-error').style.display = 'none';
-  document.getElementById('launch-btn').style.display = 'none';
+  const btn = document.getElementById('launch-btn');
+  btn.style.display = 'none'; btn.classList.remove('ready');
 
   let anyPrimaryLoaded = false;
-  let latestUpdate = null;
-  let allFromCache = true;
+  let latestUpdate     = null;
+  let anyFromDrive     = false;
 
-  // ── ORDER DATE ──────────────────────────────────────────
-  try {
-    setCardStatus('order', '⏳ Checking cache…', null);
-    let cached = cacheLoad('order');
+  // ── helper: fetch or use cache ──────────────────────────
+  async function loadFile(key, fromCacheMsg, onCacheHit, onFetch) {
+    const cached = cacheLoad(key);
     if (cached) {
-      state.datasets.order = cached.rows.map(mapServerRow);
-      setCardStatus('order', `✓ ${cached.rowCount.toLocaleString()} rows  (${cached.name})`, true);
-      cacheCardStatus('order', true);
-      if (!latestUpdate || cached.updated > latestUpdate) latestUpdate = cached.updated;
-    } else {
-      allFromCache = false;
-      setCardStatus('order', '⏳ Fetching from Drive…', null);
-      const r = await fetchDriveFile('order');
-      state.datasets.order = r.rows.map(mapServerRow);
-      setCardStatus('order', `✓ ${r.rowCount.toLocaleString()} rows  (${r.name})`, true);
-      cacheSave('order', {rows: r.rows, rowCount: r.rowCount, name: r.name, updated: r.updated});
-      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
+      onCacheHit(cached);
+      const el = document.getElementById('status-' + key);
+      if (el && el.textContent.startsWith('✓')) el.textContent += '  📦 cached';
+      return;
     }
-    anyPrimaryLoaded = true;
-  } catch(e) {
-    setCardStatus('order', `✗ Not available`, false);
-    console.warn('Order file:', e.message);
+    anyFromDrive = true;
+    const r = await fetchDriveFile(key);
+    onFetch(r);
+    if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
   }
 
-  // ── RECEIVED DATE ───────────────────────────────────────
+  // ── ORDER DATE (required) ────────────────────────────────
   try {
-    setCardStatus('recv', '⏳ Checking cache…', null);
-    let cached = cacheLoad('recv');
-    if (cached) {
-      state.datasets.recv = cached.rows.map(mapServerRow);
-      setCardStatus('recv', `✓ ${cached.rowCount.toLocaleString()} rows  (${cached.name})`, true);
-      cacheCardStatus('recv', true);
-      if (!latestUpdate || cached.updated > latestUpdate) latestUpdate = cached.updated;
-    } else {
-      allFromCache = false;
-      setCardStatus('recv', '⏳ Fetching from Drive…', null);
-      const r = await fetchDriveFile('recv');
-      state.datasets.recv = r.rows.map(mapServerRow);
-      setCardStatus('recv', `✓ ${r.rowCount.toLocaleString()} rows  (${r.name})`, true);
-      cacheSave('recv', {rows: r.rows, rowCount: r.rowCount, name: r.name, updated: r.updated});
-      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
-    }
-    anyPrimaryLoaded = true;
+    setCardStatus('order', '⏳ Loading…', null);
+    await loadFile('order', true,
+      (c) => {
+        state.datasets.order = processRows(c.rows);
+        setCardStatus('order', '✓ ' + state.datasets.order.length.toLocaleString() + ' rows  (' + c.name + ')', true);
+        anyPrimaryLoaded = true;
+        if (!latestUpdate || c.updated > latestUpdate) latestUpdate = c.updated;
+      },
+      (r) => {
+        const rows = parseBase64(r.base64, {cellDates:true});
+        state.datasets.order = processRows(rows);
+        const n = state.datasets.order.length;
+        setCardStatus('order', '✓ ' + n.toLocaleString() + ' rows  (' + r.name + ')', true);
+        cacheSave('order', { rows: rows, name: r.name, updated: r.updated });
+        anyPrimaryLoaded = true;
+      }
+    );
   } catch(e) {
-    setCardStatus('recv', `✗ Not available`, false);
-    console.warn('Recv file:', e.message);
+    setCardStatus('order', '✗ Not available', false);
+    console.warn('Order:', e.message);
   }
 
-  // ── DI MOVEMENT (optional) ──────────────────────────────
+  // ── RECEIVED DATE (required) ─────────────────────────────
   try {
-    setCardStatus('di', '⏳ Checking cache…', null);
-    let cached = cacheLoad('di');
-    if (cached) {
-      state.diLookup = cached.lookup;
-      setCardStatus('di', `✓ ${Object.keys(cached.lookup).length.toLocaleString()} items classified`, true);
-      cacheCardStatus('di', true);
-    } else {
-      setCardStatus('di', '⏳ Fetching from Drive…', null);
-      const r = await fetchDriveFile('di');
-      state.diLookup = r.lookup;
-      setCardStatus('di', `✓ ${Object.keys(r.lookup).length.toLocaleString()} items classified`, true);
-      cacheSave('di', {lookup: r.lookup, updated: r.updated});
-      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
-    }
+    setCardStatus('recv', '⏳ Loading…', null);
+    await loadFile('recv', true,
+      (c) => {
+        state.datasets.recv = processRows(c.rows);
+        setCardStatus('recv', '✓ ' + state.datasets.recv.length.toLocaleString() + ' rows  (' + c.name + ')', true);
+        anyPrimaryLoaded = true;
+        if (!latestUpdate || c.updated > latestUpdate) latestUpdate = c.updated;
+      },
+      (r) => {
+        const rows = parseBase64(r.base64, {cellDates:true});
+        state.datasets.recv = processRows(rows);
+        const n = state.datasets.recv.length;
+        setCardStatus('recv', '✓ ' + n.toLocaleString() + ' rows  (' + r.name + ')', true);
+        cacheSave('recv', { rows: rows, name: r.name, updated: r.updated });
+        anyPrimaryLoaded = true;
+      }
+    );
   } catch(e) {
-    // OPTIONAL — do not block dashboard
-    setCardStatus('di', `— Not available (movement analysis disabled)`, null);
-    console.warn('DI file (optional):', e.message);
+    setCardStatus('recv', '✗ Not available', false);
+    console.warn('Recv:', e.message);
   }
 
-  // ── INVENTORY VALUATION (optional) ─────────────────────
+  // ── DI MOVEMENT (optional) ───────────────────────────────
   try {
-    setCardStatus('val', '⏳ Checking cache…', null);
-    let cached = cacheLoad('val');
-    if (cached) {
-      state.valLookup = cached.lookup;
-      setCardStatus('val', `✓ ${Object.keys(cached.lookup).length.toLocaleString()} SKUs valued`, true);
-      cacheCardStatus('val', true);
-    } else {
-      setCardStatus('val', '⏳ Fetching from Drive…', null);
-      const r = await fetchDriveFile('val');
-      state.valLookup = r.lookup;
-      setCardStatus('val', `✓ ${Object.keys(r.lookup).length.toLocaleString()} SKUs valued`, true);
-      cacheSave('val', {lookup: r.lookup, updated: r.updated});
-      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
-    }
+    setCardStatus('di', '⏳ Loading…', null);
+    await loadFile('di', true,
+      (c) => {
+        state.diLookup = c.lookup;
+        setCardStatus('di', '✓ ' + Object.keys(c.lookup).length.toLocaleString() + ' items classified', true);
+      },
+      (r) => {
+        const rows   = parseBase64(r.base64);
+        const lookup = {};
+        let ic=-1, mc=-1, cc=-1;
+        for (let ri=0; ri<Math.min(5,rows.length); ri++) {
+          const row=rows[ri]; if(!row) continue;
+          row.forEach((cell,i) => { const v=(cell||'').toString().toLowerCase().trim();
+            if(v.includes('item code') && ic<0) ic=i;
+            if(v.includes('class movement') && !v.includes('code') && mc<0) mc=i;
+            if(v.includes('class movement') && v.includes('code')) cc=i;
+          });
+          if(ic>=0 && mc>=0) break;
+        }
+        if(ic>=0) {
+          for(let ri=1; ri<rows.length; ri++) {
+            const row=rows[ri]; if(!row) continue;
+            let code=(row[ic]||'').toString().trim();
+            if(code.startsWith("'")) code=code.slice(1).trim();
+            if(!code) continue;
+            const mv=(row[mc]||'').toString().trim();
+            lookup[code]={ movement: mv||'Unspecified', code: cc>=0?(row[cc]||'').toString().trim():'' };
+          }
+        }
+        state.diLookup = lookup;
+        setCardStatus('di', '✓ ' + Object.keys(lookup).length.toLocaleString() + ' items classified', true);
+        cacheSave('di', { lookup: lookup, updated: r.updated });
+      }
+    );
   } catch(e) {
-    // OPTIONAL — do not block dashboard
-    setCardStatus('val', `— Not available (valuation analysis disabled)`, null);
-    console.warn('Val file (optional):', e.message);
+    setCardStatus('di', '— Not available (movement analysis disabled)', null);
+    console.warn('DI (optional):', e.message);
   }
 
-  // ── TRANSACTION / USAGE (optional) ─────────────────────
+  // ── INVENTORY VALUATION (optional) ──────────────────────
   try {
-    setCardStatus('txn', '⏳ Checking cache…', null);
-    let cached = cacheLoad('txn');
-    if (cached) {
-      state.txnStats = cached.stats;
-      setCardStatus('txn', `✓ ${Object.keys(cached.stats).length.toLocaleString()} items tracked`, true);
-      cacheCardStatus('txn', true);
-    } else {
-      setCardStatus('txn', '⏳ Fetching from Drive…', null);
-      const r = await fetchDriveFile('txn');
-      state.txnStats = r.stats;
-      setCardStatus('txn', `✓ ${Object.keys(r.stats).length.toLocaleString()} items tracked`, true);
-      cacheSave('txn', {stats: r.stats, updated: r.updated});
-      if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
-    }
+    setCardStatus('val', '⏳ Loading…', null);
+    await loadFile('val', true,
+      (c) => {
+        state.valLookup = c.lookup;
+        setCardStatus('val', '✓ ' + Object.keys(c.lookup).length.toLocaleString() + ' SKUs valued', true);
+      },
+      (r) => {
+        const file = new Blob([Uint8Array.from(atob(r.base64), c=>c.charCodeAt(0))]);
+        parseValFile(file).then(lookup => {
+          state.valLookup = lookup;
+          setCardStatus('val', '✓ ' + Object.keys(lookup).length.toLocaleString() + ' SKUs valued', true);
+          cacheSave('val', { lookup: lookup, updated: r.updated });
+        });
+      }
+    );
   } catch(e) {
-    // OPTIONAL — do not block dashboard
-    setCardStatus('txn', `— Not available (usage analysis disabled)`, null);
-    console.warn('Txn file (optional):', e.message);
+    setCardStatus('val', '— Not available (valuation analysis disabled)', null);
+    console.warn('Val (optional):', e.message);
   }
 
-  // ── ABORT if neither primary file loaded ────────────────
+  // ── TRANSACTION / USAGE (optional) ──────────────────────
+  try {
+    setCardStatus('txn', '⏳ Loading…', null);
+    await loadFile('txn', true,
+      (c) => {
+        state.txnStats = c.stats;
+        setCardStatus('txn', '✓ ' + Object.keys(c.stats).length.toLocaleString() + ' items tracked', true);
+      },
+      (r) => {
+        const file = new Blob([Uint8Array.from(atob(r.base64), c=>c.charCodeAt(0))]);
+        parseTxnFile(file).then(stats => {
+          state.txnStats = stats;
+          setCardStatus('txn', '✓ ' + Object.keys(stats).length.toLocaleString() + ' items tracked', true);
+          cacheSave('txn', { stats: stats, updated: r.updated });
+        });
+      }
+    );
+  } catch(e) {
+    setCardStatus('txn', '— Not available (usage analysis disabled)', null);
+    console.warn('Txn (optional):', e.message);
+  }
+
+  // ── Abort if no primary data ─────────────────────────────
   if (!anyPrimaryLoaded) {
     document.getElementById('auto-load-desc').textContent = 'Could not connect to Google Drive data source.';
     document.getElementById('auto-load-error').style.display = '';
@@ -2280,7 +2269,7 @@ async function autoLoadFromDrive() {
     return;
   }
 
-  // ── Enrich with DI + Valuation ──────────────────────────
+  // ── Enrich ───────────────────────────────────────────────
   if (Object.keys(state.diLookup).length > 0) {
     if (state.datasets.order) enrichWithDI(state.datasets.order);
     if (state.datasets.recv)  enrichWithDI(state.datasets.recv);
@@ -2290,21 +2279,20 @@ async function autoLoadFromDrive() {
     if (state.datasets.recv)  enrichWithVal(state.datasets.recv);
   }
 
-  // ── Update nav timestamp ────────────────────────────────
+  // ── Nav timestamp ─────────────────────────────────────────
   if (latestUpdate) {
-    const d = new Date(latestUpdate);
+    const d     = new Date(latestUpdate);
     const label = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-    const ticker = document.getElementById('nav-last-updated');
-    if (ticker) ticker.textContent = `Data as of ${label}`;
+    const el    = document.getElementById('nav-last-updated');
+    if (el) el.textContent = 'Data as of ' + label;
   }
 
-  // ── Show launch button (always clickable once primary data loaded) ──
-  const fromCacheMsg = allFromCache ? ' (loaded from today\'s cache — instant!)' : '';
-  document.getElementById('auto-load-desc').textContent = 'All data loaded successfully from Google Drive.' + fromCacheMsg;
-  document.getElementById('auto-load-note').textContent = 'Data is cached daily. Next refresh: tomorrow. Click "Open Dashboard" to proceed.';
-  const btn = document.getElementById('launch-btn');
+  // ── Show launch button ────────────────────────────────────
+  const cacheMsg = anyFromDrive ? '' : ' (loaded from today's cache — instant!)';
+  document.getElementById('auto-load-desc').textContent = 'All data loaded successfully from Google Drive.' + cacheMsg;
+  document.getElementById('auto-load-note').textContent = 'Data is cached daily. Click "Open Dashboard" to proceed.';
   btn.style.display = '';
-  btn.classList.add('ready'); // ← make it clickable
+  btn.classList.add('ready');
 }
 
 function launchWithLoadedData() {
