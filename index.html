@@ -1,0 +1,4433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PT Merdeka Copper Gold — Procurement Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════
+   MCG BRAND TOKENS
+══════════════════════════════════════════════════ */
+:root {
+  /* Primary palette */
+  --navy:       #1B2E5C;
+  --navy-dark:  #0F1D3A;
+  --navy-mid:   #253870;
+  --navy-light: #2D4285;
+  --gold:       #C4993A;
+  --gold-light: #D4AD55;
+  --gold-pale:  #F3EAD3;
+  --copper:     #A85C2A;
+
+  /* Backgrounds */
+  --bg-page:    #F4F2EE;
+  --bg-card:    #FFFFFF;
+  --bg-sidebar: #FAFAF8;
+  --bg-input:   #F7F5F1;
+
+  /* Text */
+  --text-dark:  #1A1F2E;
+  --text-mid:   #3D4A5C;
+  --text-muted: #7B8899;
+  --text-light: #A8B3C0;
+
+  /* Borders */
+  --border:     #DDD9D0;
+  --border-nav: rgba(255,255,255,0.12);
+
+  /* Semantic */
+  --success:    #2E7D52;
+  --warning:    #C4993A;
+  --danger:     #B33030;
+  --info:       #1E5FA8;
+
+  /* Fonts */
+  --display: 'IBM Plex Sans', system-ui, sans-serif;
+  --sans:    'Source Sans 3', system-ui, sans-serif;
+  --mono:    'Roboto Mono', monospace;
+}
+
+/* ══════════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-page);
+  color: var(--text-dark);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+
+/* ══════════════════════════════════════════════════
+   GLOBAL NAV BAR  (always visible)
+══════════════════════════════════════════════════ */
+.site-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 999;
+  height: 60px;
+  background: var(--navy-dark);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 16px;
+  border-bottom: 2px solid var(--gold);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.35);
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.nav-logo img {
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+}
+/* SVG inline logo fallback */
+.nav-logo-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-gem {
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+}
+.nav-logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.nav-co-name {
+  font-family: var(--display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.nav-co-sub {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--gold-light);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.nav-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-nav);
+  margin: 0 8px;
+}
+.nav-title {
+  font-family: var(--display);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--gold-light);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.nav-spacer { flex: 1; }
+.nav-ticker {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.nav-ticker strong { color: var(--gold-light); }
+.nav-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-family: var(--display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.8);
+  background: transparent;
+  transition: all 0.2s;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.5); }
+.nav-btn.gold { background: var(--gold); border-color: var(--gold); color: var(--navy-dark); font-weight: 700; }
+.nav-btn.gold:hover { background: var(--gold-light); border-color: var(--gold-light); }
+
+/* ══════════════════════════════════════════════════
+   UPLOAD SCREEN
+══════════════════════════════════════════════════ */
+#upload-screen {
+  min-height: 100vh;
+  padding-top: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 24px 60px;
+  background: linear-gradient(160deg, #FFFFFF 0%, #EDE9E0 60%, #E0DBD0 100%);
+  position: relative;
+  overflow: hidden;
+}
+#upload-screen::before {
+  content: '';
+  position: absolute;
+  top: -120px; right: -120px;
+  width: 480px; height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(196,153,58,0.08) 0%, transparent 70%);
+}
+#upload-screen::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; left: -80px;
+  width: 350px; height: 350px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(27,46,92,0.07) 0%, transparent 70%);
+}
+.upload-hero {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 48px;
+}
+.upload-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.upload-eyebrow::before, .upload-eyebrow::after {
+  content: '';
+  display: block;
+  width: 28px; height: 1px;
+  background: var(--gold);
+  opacity: 0.6;
+}
+.upload-title {
+  font-family: var(--display);
+  font-size: clamp(1.65rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--navy-dark);
+  line-height: 1.2;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+.upload-title em { color: var(--gold); font-style: normal; }
+.upload-desc {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 480px;
+  margin: 0 auto;
+}
+.upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 1100px;
+  position: relative;
+  z-index: 1;
+}
+.upload-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 32px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.upload-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transition: transform 0.3s;
+  transform-origin: left;
+}
+.upload-card:hover::after, .upload-card.drag-over::after { transform: scaleX(1); }
+.upload-card:hover, .upload-card.drag-over {
+  border-color: var(--gold);
+  box-shadow: 0 8px 32px rgba(196,153,58,0.15);
+  transform: translateY(-3px);
+}
+.upload-card.loaded {
+  border-color: var(--success);
+}
+.upload-card.loaded::after {
+  background: var(--success);
+  transform: scaleX(1);
+}
+.upload-icon {
+  width: 56px; height: 56px;
+  border-radius: 12px;
+  background: var(--gold-pale);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 1.5rem;
+}
+.upload-label {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.upload-hint {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-light);
+  letter-spacing: 0.06em;
+}
+.upload-status {
+  margin-top: 10px;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  color: var(--success);
+  font-weight: 600;
+  min-height: 18px;
+}
+.file-input { display: none; }
+.upload-actions {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+.btn-launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--navy);
+  color: #FFFFFF;
+  border: none;
+  padding: 14px 52px;
+  font-family: var(--display);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.25s;
+  opacity: 0.35;
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+}
+.btn-launch::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+}
+.btn-launch.ready { opacity: 1; pointer-events: all; }
+.btn-launch:hover:not([style*="opacity"]) { background: var(--navy-mid); box-shadow: 0 6px 24px rgba(27,46,92,0.3); transform: translateY(-1px); }
+.upload-note {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  text-align: center;
+  max-width: 440px;
+}
+
+/* ══════════════════════════════════════════════════
+   LOADING SCREEN
+══════════════════════════════════════════════════ */
+#loading-screen {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(15,29,58,0.92);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 24px;
+  backdrop-filter: blur(4px);
+}
+#loading-screen.active { display: flex; }
+.loader-ring {
+  width: 60px; height: 60px;
+  border: 3px solid rgba(196,153,58,0.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-text {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.loader-progress {
+  width: 280px; height: 2px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.loader-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  width: 0%;
+  transition: width 0.3s ease;
+  border-radius: 1px;
+}
+
+/* ══════════════════════════════════════════════════
+   DASHBOARD LAYOUT
+══════════════════════════════════════════════════ */
+#dashboard { display: none; }
+#dashboard.active { display: block; }
+
+/* Sub-header bar (below site-nav, only in dashboard) */
+.dash-subbar {
+  position: sticky;
+  top: 60px;
+  z-index: 90;
+  background: var(--navy);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+}
+.dataset-tabs { display: flex; gap: 4px; }
+.dataset-tab {
+  padding: 5px 18px;
+  border-radius: 3px;
+  font-family: var(--display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.55);
+  background: transparent;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.dataset-tab.active { background: var(--gold); color: var(--navy-dark); border-color: var(--gold); }
+.dataset-tab:not(.active):hover { color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.4); }
+.dash-subbar-spacer { flex: 1; }
+.dash-info {
+  font-family: var(--display);
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.03em;
+}
+.dash-info strong { color: var(--gold-light); font-weight: 600; }
+.subbar-btn {
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-family: var(--display);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.6);
+  background: transparent;
+  transition: all 0.2s;
+}
+.subbar-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* Body grid */
+.dash-body {
+  display: grid;
+  grid-template-columns: 228px 1fr;
+  min-height: calc(100vh - 108px);
+  margin-top: 108px; /* nav 60 + subbar 48 */
+}
+
+/* ══════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════ */
+.sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 20px 16px 32px;
+  overflow-y: auto;
+  position: sticky;
+  top: 108px;
+  height: calc(100vh - 108px);
+}
+.filter-section { margin-bottom: 22px; }
+.filter-group-title {
+  font-family: var(--display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.filter-group-title::before {
+  content: '';
+  display: block;
+  width: 3px; height: 10px;
+  background: var(--gold);
+  border-radius: 2px;
+}
+.filter-label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-mid);
+  margin-bottom: 4px;
+  display: block;
+}
+.filter-input, .filter-select {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 8px;
+}
+.filter-input:focus, .filter-select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(196,153,58,0.12);
+}
+.checkbox-list { display: flex; flex-direction: column; gap: 5px; }
+.checkbox-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.checkbox-item input { display: none; }
+.checkbox-box {
+  width: 15px; height: 15px;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  font-size: 9px;
+  color: #fff;
+}
+.checkbox-item input:checked + .checkbox-box {
+  background: var(--navy);
+  border-color: var(--navy);
+}
+.checkbox-item input:checked + .checkbox-box::after { content: '✓'; }
+.checkbox-text {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--text-mid);
+  line-height: 1.3;
+}
+.status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.toggle-label { font-family: var(--sans); font-size: 0.7rem; color: var(--text-mid); }
+.toggle {
+  width: 34px; height: 18px;
+  background: var(--border);
+  border-radius: 9px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--navy); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 13px; height: 13px;
+  background: #fff;
+  border-radius: 50%;
+  top: 2.5px; left: 2.5px;
+  transition: left 0.25s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.toggle.on::after { left: 18.5px; }
+.apply-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--navy);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+  position: relative;
+  overflow: hidden;
+}
+.apply-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold);
+}
+.apply-btn:hover { background: var(--navy-mid); box-shadow: 0 4px 14px rgba(27,46,92,0.2); }
+
+/* ══════════════════════════════════════════════════
+   MAIN CONTENT
+══════════════════════════════════════════════════ */
+.main-content { padding: 24px; overflow-y: auto; }
+
+/* Section heading */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.section-heading-bar {
+  width: 4px; height: 20px;
+  background: var(--gold);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.section-heading-text {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+/* ── KPI CARDS ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 16px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.kpi-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-1px); }
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--kpi-color, var(--gold));
+}
+.kpi-icon {
+  position: absolute;
+  top: 14px; right: 14px;
+  font-size: 1.1rem;
+  opacity: 0.2;
+}
+.kpi-label {
+  font-family: var(--display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 1.65rem;
+  font-weight: 600;
+  color: var(--navy-dark);
+  line-height: 1;
+  margin-bottom: 5px;
+  letter-spacing: -0.02em;
+}
+.kpi-sub {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: var(--text-light);
+}
+
+/* ── CHART CARDS ── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  transition: box-shadow 0.2s;
+}
+.chart-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.chart-card.wide { grid-column: span 2; }
+.chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 10px;
+}
+.chart-title {
+  font-family: var(--display);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+.chart-sub {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.chart-badge {
+  font-family: var(--display);
+  font-size: 0.6rem;
+  padding: 3px 9px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.badge-gold  { background: var(--gold-pale); color: var(--copper); border: 1px solid rgba(196,153,58,0.3); }
+.badge-navy  { background: rgba(27,46,92,0.08); color: var(--navy); border: 1px solid rgba(27,46,92,0.2); }
+.badge-red   { background: rgba(179,48,48,0.08); color: var(--danger); border: 1px solid rgba(179,48,48,0.2); }
+.badge-green { background: rgba(46,125,82,0.10); color: var(--success); border: 1px solid rgba(46,125,82,0.2); }
+
+.chart-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chart-control-label { font-family: var(--display); font-size: 0.68rem; font-weight: 400; color: var(--text-muted); }
+.mini-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-family: var(--display);
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  outline: none;
+  cursor: pointer;
+}
+.mini-select:focus { border-color: var(--gold); }
+.mini-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 9px;
+  font-family: var(--display);
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  outline: none;
+  width: 160px;
+}
+.mini-input:focus { border-color: var(--gold); }
+.chart-canvas-wrap { position: relative; height: 220px; }
+.chart-canvas-wrap.tall { height: 260px; }
+.chart-canvas-wrap.short { height: 180px; }
+.item-search-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+
+/* ── TABLES ── */
+.table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.table-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+thead tr { background: var(--navy-dark); }
+th {
+  padding: 9px 12px;
+  text-align: left;
+  font-family: var(--display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bg-page);
+  color: var(--text-mid);
+  font-family: var(--sans);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(196,153,58,0.04); }
+.anomaly-row td { background: rgba(179,48,48,0.03); }
+.anomaly-row:hover td { background: rgba(179,48,48,0.07); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tag-price    { background: rgba(168,92,42,0.12); color: var(--copper); }
+.tag-lead     { background: rgba(30,95,168,0.12); color: var(--info); }
+.tag-qty      { background: rgba(179,48,48,0.12); color: var(--danger); }
+.tag-completed { background: rgba(46,125,82,0.12); color: var(--success); }
+.tag-returned { background: rgba(179,48,48,0.12); color: var(--danger); }
+.tag-transit  { background: rgba(30,95,168,0.12); color: var(--info); }
+.tag-order    { background: var(--gold-pale); color: var(--copper); }
+.tag-updated  { background: rgba(46,125,82,0.12); color: var(--success); }
+.tag-other    { background: rgba(0,0,0,0.06); color: var(--text-muted); }
+
+/* DI Movement category tags */
+.di-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 2px;
+  font-family: var(--display); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap;
+}
+.di-deadstock    { background: rgba(179,48,48,0.12); color: #B33030; border: 1px solid rgba(179,48,48,0.2); }
+.di-potential    { background: rgba(208,90,26,0.12); color: #C05010; border: 1px solid rgba(208,90,26,0.2); }
+.di-slow         { background: rgba(196,153,58,0.15); color: #8A6010; border: 1px solid rgba(196,153,58,0.3); }
+.di-insurance    { background: rgba(30,95,168,0.10); color: #1E5FA8; border: 1px solid rgba(30,95,168,0.2); }
+.di-fast         { background: rgba(46,125,82,0.10); color: #2E7D52; border: 1px solid rgba(46,125,82,0.2); }
+.di-medium       { background: rgba(20,125,125,0.10); color: #148080; border: 1px solid rgba(20,125,125,0.2); }
+.di-new          { background: rgba(106,58,140,0.10); color: #6A3A8C; border: 1px solid rgba(106,58,140,0.2); }
+.di-critical     { background: rgba(27,46,92,0.10); color: #1B2E5C; border: 1px solid rgba(27,46,92,0.2); }
+.di-unspecified  { background: rgba(123,136,153,0.10); color: #5A6878; border: 1px solid rgba(123,136,153,0.2); }
+.di-none         { background: rgba(0,0,0,0.04); color: #9AA5B4; border: 1px solid rgba(0,0,0,0.1); }
+
+/* DI Risk alert rows */
+.risk-critical td { background: rgba(179,48,48,0.05) !important; }
+.risk-high td     { background: rgba(208,90,26,0.04) !important; }
+.risk-medium td   { background: rgba(196,153,58,0.04) !important; }
+.risk-critical:hover td { background: rgba(179,48,48,0.10) !important; }
+.risk-high:hover td     { background: rgba(208,90,26,0.08) !important; }
+.risk-medium:hover td   { background: rgba(196,153,58,0.08) !important; }
+
+/* DI section divider */
+.section-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 28px 0 18px;
+}
+.section-divider-line { flex: 1; height: 1px; background: var(--border); }
+.section-divider-label {
+  font-family: var(--display); font-size: 0.65rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--navy); padding: 4px 14px;
+  border: 1px solid var(--border); border-radius: 2px;
+  background: var(--bg-page); white-space: nowrap;
+}
+.section-divider-label span { color: var(--gold); margin-right: 6px; }
+
+/* Inventory Valuation insight panels */
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.insight-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.insight-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--ip-color, var(--navy));
+}
+.insight-panel-icon { font-size: 1.3rem; margin-bottom: 6px; display: block; }
+.insight-panel-label {
+  font-family: var(--display); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 4px;
+}
+.insight-panel-value {
+  font-family: var(--mono); font-size: 1.45rem; font-weight: 600;
+  color: var(--navy-dark); line-height: 1; margin-bottom: 4px;
+}
+.insight-panel-sub { font-family: var(--sans); font-size: 0.62rem; color: var(--text-light); }
+
+/* Progress bars for inventory breakdown */
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bar-label { font-family: var(--sans); font-size: 0.68rem; color: var(--text-mid); min-width: 120px; }
+.bar-track { flex: 1; height: 8px; background: var(--bg-page); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.bar-val { font-family: var(--mono); font-size: 0.65rem; color: var(--text-muted); min-width: 56px; text-align: right; }
+
+/* ── TRANSACTION / USAGE STYLES ── */
+.coverage-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 10px;
+  font-family: var(--display); font-size: 0.62rem; font-weight: 700; white-space: nowrap;
+}
+.cov-critical { background:rgba(179,48,48,0.12); color:#B33030; }   /* < 30 days */
+.cov-low      { background:rgba(208,90,26,0.12); color:#C05010; }    /* 30–60 days */
+.cov-medium   { background:rgba(196,153,58,0.15); color:#8A6010; }   /* 60–120 days */
+.cov-good     { background:rgba(46,125,82,0.12); color:#2E7D52; }    /* > 120 days */
+.cov-excess   { background:rgba(27,46,92,0.08); color:#1B2E5C; }     /* > 365 days */
+.cov-none     { background:rgba(0,0,0,0.05); color:#9AA5B4; }        /* no usage */
+
+.trend-up   { color:#B33030; font-weight:700; font-size:1rem; }
+.trend-down { color:#2E7D52; font-weight:700; font-size:1rem; }
+.trend-flat { color:#7B8899; font-size:1rem; }
+
+.rop-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:2px;
+  font-family:var(--display); font-size:0.6rem; font-weight:700; letter-spacing:0.05em;
+}
+.rop-urgent   { background:rgba(179,48,48,0.12); color:#B33030; border:1px solid rgba(179,48,48,0.25); }
+.rop-soon     { background:rgba(208,90,26,0.12); color:#C05010; border:1px solid rgba(208,90,26,0.2); }
+.rop-ok       { background:rgba(46,125,82,0.12); color:#2E7D52; border:1px solid rgba(46,125,82,0.2); }
+.rop-hold     { background:rgba(27,46,92,0.08);  color:#1B2E5C; border:1px solid rgba(27,46,92,0.15); }
+
+/* Pagination */
+.pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 0.68rem; color: var(--text-muted); font-family: var(--display); }
+.page-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 10px;
+  cursor: pointer;
+  color: var(--text-mid);
+  font-family: var(--display);
+  font-size: 0.7rem;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.page-btn:hover { border-color: var(--gold); color: var(--gold); }
+.page-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.no-data { text-align: center; padding: 40px; font-size: 0.78rem; color: var(--text-light); font-family: var(--display); }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .dash-body { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .chart-card.wide { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ GLOBAL NAV (always shown) ═══════════════ -->
+<nav class="site-nav">
+  <div class="nav-logo-mark">
+    <!-- MCG Logo SVG (diamond/gem mark) -->
+    <svg class="logo-gem" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="20,3 37,14 37,26 20,37 3,26 3,14" fill="none" stroke="#C4993A" stroke-width="1.5"/>
+      <polygon points="20,8 32,16 32,24 20,32 8,24 8,16" fill="none" stroke="#C4993A" stroke-width="1" opacity="0.5"/>
+      <polygon points="20,13 27,18 27,22 20,27 13,22 13,18" fill="#C4993A" opacity="0.7"/>
+      <line x1="20" y1="3" x2="20" y2="37" stroke="#C4993A" stroke-width="0.5" opacity="0.3"/>
+      <line x1="3" y1="14" x2="37" y2="26" stroke="#C4993A" stroke-width="0.5" opacity="0.3"/>
+      <line x1="3" y1="26" x2="37" y2="14" stroke="#C4993A" stroke-width="0.5" opacity="0.3"/>
+    </svg>
+    <div class="nav-logo-text">
+      <div class="nav-co-name">PT Merdeka Copper Gold Tbk</div>
+      <div class="nav-co-sub">MDKA.JK &nbsp;·&nbsp; Jakarta</div>
+    </div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-title">Procurement Intelligence Dashboard</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-ticker" id="nav-ticker" style="display:none">
+    Loaded: <strong id="nav-row-count">—</strong> rows
+  </div>
+  <span class="nav-btn" id="nav-last-updated" style="opacity:0.55;font-size:0.72rem;cursor:default;pointer-events:none;border:none;background:transparent;"></span>
+  <button class="nav-btn" id="nav-refresh-btn" onclick="refreshDashboard()" style="display:none">↺ Refresh</button>
+  <button class="nav-btn" id="nav-upload-btn" onclick="backToUpload()" style="display:none">↩ Manual Upload</button>
+</nav>
+
+<!-- ═══════════════ UPLOAD SCREEN ═══════════════ -->
+<div id="upload-screen">
+  <div class="upload-hero">
+    <div class="upload-eyebrow">Procurement Analytics</div>
+    <div class="upload-title">Purchase Order<br>Intelligence <em>Dashboard</em></div>
+    <div class="upload-desc" id="auto-load-desc">Connecting to Google Drive — loading today's data…</div>
+  </div>
+
+  <!-- AUTO-LOAD STATUS GRID -->
+  <div class="upload-grid" id="auto-load-grid">
+    <div class="upload-card" id="card-order">
+      <div class="upload-icon">📅</div>
+      <div class="upload-label">Order Date Dataset</div>
+      <div class="upload-hint">BSI_..._Order_Date.xlsx</div>
+      <div class="upload-status" id="status-order">⏳ Fetching from Drive…</div>
+    </div>
+    <div class="upload-card" id="card-recv">
+      <div class="upload-icon">📦</div>
+      <div class="upload-label">Received Date Dataset</div>
+      <div class="upload-hint">BSI_..._Received_Date.xlsx</div>
+      <div class="upload-status" id="status-recv">⏳ Fetching from Drive…</div>
+    </div>
+    <div class="upload-card" id="card-di">
+      <div class="upload-icon" style="background:rgba(196,153,58,0.15)">📊</div>
+      <div class="upload-label">DI Movement Data</div>
+      <div class="upload-hint">DI_BSI_..._Date.ods</div>
+      <div class="upload-status" id="status-di">⏳ Fetching from Drive…</div>
+      <div style="font-family:var(--display);font-size:0.6rem;color:var(--gold);margin-top:6px;font-weight:600;letter-spacing:0.05em;">OPTIONAL — MOVEMENT ANALYSIS</div>
+    </div>
+    <div class="upload-card" id="card-val">
+      <div class="upload-icon" style="background:rgba(27,46,92,0.1)">📋</div>
+      <div class="upload-label">Inventory Valuation</div>
+      <div class="upload-hint">Val_BSI_..._Date.xlsx</div>
+      <div class="upload-status" id="status-val">⏳ Fetching from Drive…</div>
+      <div style="font-family:var(--display);font-size:0.6rem;color:var(--navy);margin-top:6px;font-weight:600;letter-spacing:0.05em;opacity:0.6">OPTIONAL — WORKING CAPITAL</div>
+    </div>
+    <div class="upload-card" id="card-txn">
+      <div class="upload-icon" style="background:rgba(46,125,82,0.1)">📈</div>
+      <div class="upload-label">Transaction / Usage</div>
+      <div class="upload-hint">Transaction_BSI.xlsx</div>
+      <div class="upload-status" id="status-txn">⏳ Fetching from Drive…</div>
+      <div style="font-family:var(--display);font-size:0.6rem;color:var(--success);margin-top:6px;font-weight:600;letter-spacing:0.05em;opacity:0.8">OPTIONAL — REPLENISHMENT</div>
+    </div>
+  </div>
+
+  <div class="upload-actions">
+    <div id="auto-load-error" style="display:none;margin-bottom:16px;">
+      <div style="background:rgba(179,48,48,0.08);border:1px solid rgba(179,48,48,0.25);border-radius:8px;padding:14px 18px;color:var(--danger);font-size:0.82rem;line-height:1.5;">
+        ⚠ Could not reach the Google Drive data source. Check that the Apps Script URL is configured and the folder is shared correctly.
+        <br><a href="#" onclick="showManualUpload(event)" style="color:var(--gold);font-weight:600;text-decoration:underline;">Upload files manually instead →</a>
+      </div>
+    </div>
+    <button class="btn-launch" id="launch-btn" onclick="launchWithLoadedData()" style="display:none">
+      Open Dashboard →
+    </button>
+    <div class="upload-note" id="auto-load-note">Files are fetched automatically from Google Drive. No upload needed.</div>
+  </div>
+
+  <!-- ═══ MANUAL UPLOAD FALLBACK (hidden by default) ═══ -->
+  <div id="manual-upload-section" style="display:none;margin-top:32px;border-top:1px solid var(--border);padding-top:28px;">
+    <div style="font-family:var(--display);font-size:0.7rem;color:var(--text-muted);letter-spacing:0.1em;text-align:center;margin-bottom:20px;">MANUAL UPLOAD FALLBACK</div>
+    <div class="upload-grid">
+      <div class="upload-card" id="card-order-m"
+        ondragover="onDrag(event,'order')" ondragleave="offDrag('order')" ondrop="onDrop(event,'order')"
+        onclick="document.getElementById('file-order').click()">
+        <div class="upload-icon">📅</div>
+        <div class="upload-label">Order Date Dataset</div>
+        <div class="upload-hint">BSI_..._Order_Date.xlsx</div>
+        <div class="upload-status" id="status-order-m"></div>
+        <input type="file" id="file-order" class="file-input" accept=".xlsx,.xls" onchange="handleFile(event,'order')">
+      </div>
+      <div class="upload-card" id="card-recv-m"
+        ondragover="onDrag(event,'recv')" ondragleave="offDrag('recv')" ondrop="onDrop(event,'recv')"
+        onclick="document.getElementById('file-recv').click()">
+        <div class="upload-icon">📦</div>
+        <div class="upload-label">Received Date Dataset</div>
+        <div class="upload-hint">BSI_..._Received_Date.xlsx</div>
+        <div class="upload-status" id="status-recv-m"></div>
+        <input type="file" id="file-recv" class="file-input" accept=".xlsx,.xls" onchange="handleFile(event,'recv')">
+      </div>
+      <div class="upload-card" id="card-di-m"
+        ondragover="onDrag(event,'di')" ondragleave="offDrag('di')" ondrop="onDrop(event,'di')"
+        onclick="document.getElementById('file-di').click()">
+        <div class="upload-icon" style="background:rgba(196,153,58,0.15)">📊</div>
+        <div class="upload-label">DI Movement Data</div>
+        <div class="upload-hint">DI_BSI_..._Date.ods / .xlsx</div>
+        <div class="upload-status" id="status-di-m"></div>
+        <input type="file" id="file-di" class="file-input" accept=".ods,.xlsx,.xls" onchange="handleFile(event,'di')">
+      </div>
+      <div class="upload-card" id="card-val-m"
+        ondragover="onDrag(event,'val')" ondragleave="offDrag('val')" ondrop="onDrop(event,'val')"
+        onclick="document.getElementById('file-val').click()">
+        <div class="upload-icon" style="background:rgba(27,46,92,0.1)">📋</div>
+        <div class="upload-label">Inventory Valuation</div>
+        <div class="upload-hint">Val_BSI_..._Date.xlsx</div>
+        <div class="upload-status" id="status-val-m"></div>
+        <input type="file" id="file-val" class="file-input" accept=".xlsx,.xls,.ods" onchange="handleFile(event,'val')">
+      </div>
+      <div class="upload-card" id="card-txn-m"
+        ondragover="onDrag(event,'txn')" ondragleave="offDrag('txn')" ondrop="onDrop(event,'txn')"
+        onclick="document.getElementById('file-txn').click()">
+        <div class="upload-icon" style="background:rgba(46,125,82,0.1)">📈</div>
+        <div class="upload-label">Transaction / Usage</div>
+        <div class="upload-hint">Transaction_BSI.xlsx</div>
+        <div class="upload-status" id="status-txn-m"></div>
+        <input type="file" id="file-txn" class="file-input" accept=".xlsx,.xls,.ods" onchange="handleFile(event,'txn')">
+      </div>
+    </div>
+    <div class="upload-actions" style="margin-top:0">
+      <button class="btn-launch" id="launch-btn-manual" onclick="launchDashboard()">
+        Launch Dashboard →
+      </button>
+      <div class="upload-note">Upload at least one file to proceed. Large files may take 20–40 seconds.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ LOADING ═══════════════ -->
+<div id="loading-screen">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loading-text">Initialising…</div>
+  <div class="loader-progress"><div class="loader-bar" id="loader-bar"></div></div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="dashboard">
+
+  <!-- Sub-bar -->
+  <div class="dash-subbar">
+    <div class="dataset-tabs">
+      <button class="dataset-tab active" id="tab-order" onclick="switchDataset('order')">Order Date</button>
+      <button class="dataset-tab" id="tab-recv" onclick="switchDataset('recv')">Received Date</button>
+    </div>
+    <div class="dash-subbar-spacer"></div>
+    <div class="dash-info" id="top-info">— rows loaded —</div>
+    <button class="subbar-btn" onclick="resetFilters()">Reset Filters</button>
+  </div>
+
+  <!-- Dashboard Body -->
+  <div class="dash-body">
+
+    <!-- ─── SIDEBAR ─── -->
+    <div class="sidebar">
+
+      <!-- Data Rules Notice -->
+      <div style="background:rgba(27,46,92,0.06);border:1px solid rgba(27,46,92,0.15);border-left:3px solid var(--gold);border-radius:4px;padding:10px 12px;margin-bottom:20px;">
+        <div style="font-family:var(--display);font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--navy);margin-bottom:6px;">Active Data Rules</div>
+        <div style="font-family:var(--sans);font-size:0.68rem;color:var(--text-mid);line-height:1.5;">
+          <div style="margin-bottom:3px;">✓ <strong>Value:</strong> Col AB — Ordered Value (Local) in USD</div>
+          <div style="margin-bottom:3px;">✓ <strong>Backorder rows excluded</strong> (BF must be blank)</div>
+          <div id="di-rules-line" style="display:none;color:var(--success)">✓ <strong>DI Movement</strong> data joined on Item Code</div>
+          <div id="val-rules-line" style="display:none;color:var(--info)">✓ <strong>Inventory Valuation</strong> joined on Item Code</div>
+          <div id="txn-rules-line" style="display:none;color:var(--success)">✓ <strong>Transaction/Usage</strong> joined on Item Code (Stock Code)</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-group-title">Date Range</div>
+        <label class="filter-label">From</label>
+        <input type="date" class="filter-input" id="f-date-from">
+        <label class="filter-label">To</label>
+        <input type="date" class="filter-input" id="f-date-to">
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-group-title">Order Status</div>
+        <div class="checkbox-list" id="status-checkboxes"></div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-group-title" style="justify-content:space-between">
+          Warehouse
+          <div style="display:flex;gap:6px">
+            <button onclick="whseSelectAll(true)"  style="font-family:var(--display);font-size:0.58rem;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:3px;padding:2px 7px;cursor:pointer;letter-spacing:0.04em">All</button>
+            <button onclick="whseSelectAll(false)" style="font-family:var(--display);font-size:0.58rem;font-weight:600;background:var(--bg-input);color:var(--text-mid);border:1px solid var(--border);border-radius:3px;padding:2px 7px;cursor:pointer;letter-spacing:0.04em">None</button>
+          </div>
+        </div>
+        <div style="font-family:var(--sans);font-size:0.65rem;color:var(--text-muted);margin-bottom:8px">
+          <span id="whse-selected-count">—</span> selected
+        </div>
+        <div class="checkbox-list" id="whse-checkboxes" style="max-height:220px;overflow-y:auto;padding-right:2px"></div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-group-title">Supplier</div>
+        <input type="text" class="filter-input" id="f-supplier" placeholder="Search supplier name…">
+      </div>
+
+      <div class="filter-section" id="val-filter-section" style="display:none">
+        <div class="filter-group-title">Product Group</div>
+        <select class="filter-select" id="f-product-group">
+          <option value="">All Product Groups</option>
+        </select>
+      </div>
+
+      <div class="filter-section" id="di-filter-section" style="display:none">
+        <div class="filter-group-title">DI Movement</div>
+        <div class="checkbox-list" id="di-checkboxes"></div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-group-title">Anomaly Focus</div>
+        <div class="toggle-row">
+          <span class="toggle-label">Price Anomalies Only</span>
+          <div class="toggle" id="toggle-anom-price" onclick="toggleSwitch('anom-price')"></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Lead Time Anomalies</span>
+          <div class="toggle" id="toggle-anom-lead" onclick="toggleSwitch('anom-lead')"></div>
+        </div>
+      </div>
+
+      <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+    </div>
+
+    <!-- ─── MAIN CONTENT ─── -->
+    <div class="main-content">
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--kpi-color:var(--gold)">
+          <div class="kpi-icon">📋</div>
+          <div class="kpi-label">Total PO Lines</div>
+          <div class="kpi-value" id="kpi-lines">—</div>
+          <div class="kpi-sub">after applied filters</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--navy)">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-label">Total Value (USD)</div>
+          <div class="kpi-value" id="kpi-value">—</div>
+          <div class="kpi-sub" id="kpi-value-sub">ordered value (USD, col AB)</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--info)">
+          <div class="kpi-icon">⏱</div>
+          <div class="kpi-label">Avg Lead Time</div>
+          <div class="kpi-value" id="kpi-lead">—</div>
+          <div class="kpi-sub">days (order → received)</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--success)">
+          <div class="kpi-icon">🏢</div>
+          <div class="kpi-label">Active Suppliers</div>
+          <div class="kpi-value" id="kpi-suppliers">—</div>
+          <div class="kpi-sub">unique suppliers</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--copper)">
+          <div class="kpi-icon">🔩</div>
+          <div class="kpi-label">Unique Items</div>
+          <div class="kpi-value" id="kpi-items">—</div>
+          <div class="kpi-sub">distinct item codes</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--danger)">
+          <div class="kpi-icon">⚠️</div>
+          <div class="kpi-label">Anomalies Detected</div>
+          <div class="kpi-value" id="kpi-anomalies">—</div>
+          <div class="kpi-sub">price / lead / qty outliers</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Purchasing Trend</div>
+              <div class="chart-sub">Monthly ordered value (USD) over time</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">View:</span>
+              <select class="mini-select" id="trend-view" onchange="renderTrendChart()">
+                <option value="value">By Value</option>
+                <option value="count">By Count</option>
+              </select>
+              <span class="chart-badge badge-gold" id="trend-badge">—</span>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap tall"><canvas id="chart-trend"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Top Suppliers</div>
+              <div class="chart-sub">By total ordered value (USD)</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Top</span>
+              <select class="mini-select" id="supplier-n" onchange="renderSupplierChart()">
+                <option>10</option><option>15</option><option>20</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap tall"><canvas id="chart-suppliers"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Warehouse Distribution</div>
+              <div class="chart-sub">Ordered value by warehouse code</div>
+            </div>
+            <span class="chart-badge badge-navy" id="whse-badge">—</span>
+          </div>
+          <div class="chart-canvas-wrap tall"><canvas id="chart-whse"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Lead Time Distribution</div>
+              <div class="chart-sub">Days between order date → received</div>
+            </div>
+            <span class="chart-badge badge-navy" id="lead-badge">—</span>
+          </div>
+          <div class="chart-canvas-wrap tall"><canvas id="chart-lead"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Order vs. Received Gap</div>
+              <div class="chart-sub">Monthly volume comparison</div>
+            </div>
+            <span class="chart-badge badge-gold">COMPARISON</span>
+          </div>
+          <div class="chart-canvas-wrap tall"><canvas id="chart-gap"></canvas></div>
+        </div>
+
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Item Price Trend</div>
+              <div class="chart-sub">Unit price over time in USD with anomaly bands (±2.5σ)</div>
+            </div>
+            <span class="chart-badge badge-red" id="price-anom-badge">—</span>
+          </div>
+          <div class="item-search-row">
+            <input type="text" class="mini-input" id="item-search" placeholder="Search item code or description…" oninput="searchItems()">
+            <select class="mini-select" id="item-select" style="min-width:200px" onchange="renderPriceChart()">
+              <option value="">Select item…</option>
+            </select>
+            <span class="chart-control-label" id="item-stats"></span>
+          </div>
+          <div class="chart-canvas-wrap"><canvas id="chart-price"></canvas></div>
+        </div>
+
+      </div>
+
+      <!-- Anomaly Report -->
+      <div class="table-card">
+        <div class="table-header">
+          <div>
+            <div class="chart-title">Anomaly Report</div>
+            <div class="chart-sub">Outliers detected via Z-score (&gt;2.5σ) on price, lead time, and quantity</div>
+          </div>
+          <div class="chart-controls">
+            <span class="chart-control-label">Type:</span>
+            <select class="mini-select" id="anom-filter" onchange="renderAnomalyTable()">
+              <option value="">All Anomalies</option>
+              <option value="price">Price Spike</option>
+              <option value="lead">Lead Time</option>
+              <option value="qty">Qty Outlier</option>
+            </select>
+            <span class="chart-badge badge-red" id="anom-count-badge">—</span>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Type</th><th>Order No</th><th>Item Code</th><th>Description</th>
+              <th>Supplier</th><th>Whse</th><th>Status</th>
+              <th>Order Date</th><th>Qty</th><th>Value (USD)</th>
+              <th>Unit Price (USD)</th><th>Avg Price (USD)</th><th>Z-Score</th>
+            </tr></thead>
+            <tbody id="anomaly-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="anom-pagination"></div>
+      </div>
+
+      <!-- Top Items -->
+      <div class="table-card">
+        <div class="table-header">
+          <div>
+            <div class="chart-title">Top Purchased Items</div>
+            <div class="chart-sub">Most frequently ordered items ranked by value, count, or quantity</div>
+          </div>
+          <div class="chart-controls">
+            <span class="chart-control-label">Sort by:</span>
+            <select class="mini-select" id="items-sort" onchange="renderItemsTable()">
+              <option value="value">Total Value</option>
+              <option value="count">Order Count</option>
+              <option value="qty">Total Qty</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>#</th><th>Item Code</th><th>Description</th><th>Category</th>
+              <th>Order Count</th><th>Total Qty</th><th>Total Value (USD)</th>
+              <th>Avg Unit Price (USD)</th><th>Trend</th>
+            </tr></thead>
+            <tbody id="items-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Supplier Performance -->
+      <div class="table-card">
+        <div class="table-header">
+          <div>
+            <div class="chart-title">Supplier Performance</div>
+            <div class="chart-sub">Lead time analysis, total value, and anomaly count per supplier</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>#</th><th>Supplier</th><th>PO Lines</th><th>Total Value (USD)</th>
+              <th>Avg Lead Time</th><th>Min Lead</th><th>Max Lead</th>
+              <th>Anomalies</th><th>Top Warehouse</th>
+            </tr></thead>
+            <tbody id="supplier-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ DI MOVEMENT ANALYSIS SECTION ══ -->
+      <div id="di-section" style="display:none">
+
+        <div class="section-divider">
+          <div class="section-divider-line"></div>
+          <div class="section-divider-label"><span>◆</span>DI Movement Analysis</div>
+          <div class="section-divider-line"></div>
+        </div>
+
+        <!-- DI KPIs -->
+        <div class="kpi-grid" style="margin-bottom:20px">
+          <div class="kpi-card" style="--kpi-color:#B33030">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-label">Deadstock Purchases</div>
+            <div class="kpi-value" id="kpi-di-deadstock">—</div>
+            <div class="kpi-sub" id="kpi-di-deadstock-val">PO lines</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#C05010">
+            <div class="kpi-icon">🔶</div>
+            <div class="kpi-label">Potential Deadstock</div>
+            <div class="kpi-value" id="kpi-di-potential">—</div>
+            <div class="kpi-sub" id="kpi-di-potential-val">PO lines</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--gold)">
+            <div class="kpi-icon">🐢</div>
+            <div class="kpi-label">Slow Moving</div>
+            <div class="kpi-value" id="kpi-di-slow">—</div>
+            <div class="kpi-sub" id="kpi-di-slow-val">PO lines</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--success)">
+            <div class="kpi-icon">🚀</div>
+            <div class="kpi-label">Fast Moving</div>
+            <div class="kpi-value" id="kpi-di-fast">—</div>
+            <div class="kpi-sub">PO lines</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--text-muted)">
+            <div class="kpi-icon">❓</div>
+            <div class="kpi-label">Not in DI</div>
+            <div class="kpi-value" id="kpi-di-unmatched">—</div>
+            <div class="kpi-sub">items without DI record</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#B33030">
+            <div class="kpi-icon">💸</div>
+            <div class="kpi-label">At-Risk Spend (USD)</div>
+            <div class="kpi-value" id="kpi-di-risk-val">—</div>
+            <div class="kpi-sub">deadstock + potential DS</div>
+          </div>
+        </div>
+
+        <!-- DI Charts -->
+        <div class="charts-grid" style="margin-bottom:20px">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Spend by Movement Category</div>
+                <div class="chart-sub">Total ordered value (USD) per DI classification</div>
+              </div>
+              <span class="chart-badge badge-red" id="di-spend-badge">—</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-di-spend"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Order Count by Movement Category</div>
+                <div class="chart-sub">Number of PO lines per DI classification</div>
+              </div>
+              <span class="chart-badge badge-navy" id="di-count-badge">—</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-di-count"></canvas></div>
+          </div>
+          <div class="chart-card wide">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">At-Risk Purchasing Trend</div>
+                <div class="chart-sub">Monthly spend — Dead Stock, Potential Dead Stock, and Slow Moving items</div>
+              </div>
+              <span class="chart-badge badge-red">AT-RISK TREND</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-di-trend"></canvas></div>
+          </div>
+        </div>
+
+        <!-- DI Risk Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">Procurement Risk Alerts</div>
+              <div class="chart-sub">Purchases conflicting with DI movement classification — sorted by risk level &amp; spend</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Risk:</span>
+              <select class="mini-select" id="di-risk-filter" onchange="renderDIRiskTable()">
+                <option value="">All Risks</option>
+                <option value="critical">🔴 Dead Stock</option>
+                <option value="high">🟠 Potential DS</option>
+                <option value="medium">🟡 Slow Moving</option>
+                <option value="low">🔵 Insurance Item</option>
+              </select>
+              <span class="chart-badge badge-red" id="di-risk-count-badge">—</span>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Risk</th><th>DI Class</th><th>Item Code</th><th>Description</th>
+                <th>Supplier</th><th>Whse</th><th>Order Date</th>
+                <th>Qty</th><th>Value (USD)</th>
+              </tr></thead>
+              <tbody id="di-risk-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="di-risk-pagination"></div>
+        </div>
+
+        <!-- DI Item Breakdown Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">Item Purchasing vs. Movement Classification</div>
+              <div class="chart-sub">All purchased items with their DI category, total spend, and purchase frequency</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Category:</span>
+              <select class="mini-select" id="di-item-cat-filter" onchange="renderDIItemTable()">
+                <option value="">All Categories</option>
+                <option value="Dead Stock">Dead Stock</option>
+                <option value="Potential Dead Stock">Potential Dead Stock</option>
+                <option value="Slow Moving">Slow Moving</option>
+                <option value="Insurance Item">Insurance Item</option>
+                <option value="Fast Moving">Fast Moving</option>
+                <option value="Medium Moving">Medium Moving</option>
+                <option value="New Ansi">New Ansi</option>
+                <option value="Critical">Critical</option>
+                <option value="Unspecified">Unspecified</option>
+                <option value="Not in DI">Not in DI</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Item Code</th><th>Description</th><th>DI Classification</th>
+                <th>Code</th><th>Order Lines</th><th>Total Qty</th>
+                <th>Total Spend (USD)</th><th>Avg Unit Price</th><th>Risk Flag</th>
+              </tr></thead>
+              <tbody id="di-item-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /di-section -->
+
+      <!-- ══ INVENTORY VALUATION SECTION ══ -->
+      <div id="val-section" style="display:none">
+
+        <div class="section-divider">
+          <div class="section-divider-line"></div>
+          <div class="section-divider-label"><span>◆</span>Inventory Valuation &amp; Working Capital</div>
+          <div class="section-divider-line"></div>
+        </div>
+
+        <!-- Working Capital KPIs -->
+        <div class="kpi-grid" style="margin-bottom:20px">
+          <div class="kpi-card" style="--kpi-color:var(--navy)">
+            <div class="kpi-icon">🏦</div>
+            <div class="kpi-label">Total Inventory Value</div>
+            <div class="kpi-value" id="kpi-val-total">—</div>
+            <div class="kpi-sub" id="kpi-val-items">— items</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#B33030">
+            <div class="kpi-icon">💀</div>
+            <div class="kpi-label">Dead Stock Inv. Value</div>
+            <div class="kpi-value" id="kpi-val-dead">—</div>
+            <div class="kpi-sub" id="kpi-val-dead-pct">of total inventory</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#C05010">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-label">Potential DS Value</div>
+            <div class="kpi-value" id="kpi-val-potential">—</div>
+            <div class="kpi-sub" id="kpi-val-potential-pct">of total inventory</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--gold)">
+            <div class="kpi-icon">🐢</div>
+            <div class="kpi-label">Slow Moving Value</div>
+            <div class="kpi-value" id="kpi-val-slow">—</div>
+            <div class="kpi-sub" id="kpi-val-slow-pct">of total inventory</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--danger)">
+            <div class="kpi-icon">🔒</div>
+            <div class="kpi-label">Capital at Risk</div>
+            <div class="kpi-value" id="kpi-val-atrisk">—</div>
+            <div class="kpi-sub">Dead + Potential DS + Slow Moving</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--success)">
+            <div class="kpi-icon">🏪</div>
+            <div class="kpi-label">Warehouses Tracked</div>
+            <div class="kpi-value" id="kpi-val-whse">—</div>
+            <div class="kpi-sub">locations with inventory</div>
+          </div>
+        </div>
+
+        <!-- Valuation Charts -->
+        <div class="charts-grid" style="margin-bottom:20px">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Inventory Value by Movement Class</div>
+                <div class="chart-sub">On-hand value (USD) split by DI classification</div>
+              </div>
+              <span class="chart-badge badge-red" id="val-di-badge">—</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-val-di"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Inventory Value by Warehouse</div>
+                <div class="chart-sub">On-hand value distribution across warehouses</div>
+              </div>
+              <span class="chart-badge badge-navy" id="val-whse-badge">—</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-val-whse"></canvas></div>
+          </div>
+
+          <div class="chart-card wide">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Top 20 Items by Inventory Value</div>
+                <div class="chart-sub">Highest on-hand value items — colour indicates DI movement classification</div>
+              </div>
+              <div class="chart-controls">
+                <span class="chart-control-label">Show:</span>
+                <select class="mini-select" id="val-top-filter" onchange="renderValTopItems()">
+                  <option value="">All Classifications</option>
+                  <option value="Dead Stock">Dead Stock only</option>
+                  <option value="Potential Dead Stock">Potential DS only</option>
+                  <option value="Slow Moving">Slow Moving only</option>
+                </select>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-val-top"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Capital at Risk — Movement Breakdown</div>
+                <div class="chart-sub">% of total inventory tied up per risk category</div>
+              </div>
+            </div>
+            <!-- mini bar breakdown rendered as HTML -->
+            <div id="val-breakdown-bars" style="padding:4px 0"></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Top Product Groups by Inv. Value</div>
+                <div class="chart-sub">Total on-hand value by product group category</div>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-val-pg"></canvas></div>
+          </div>
+        </div>
+
+        <!-- PO ↔ Inventory Cross-Analysis: items still being purchased with existing stock -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">⚠️ Items Purchased with Existing Inventory</div>
+              <div class="chart-sub">Items that have stock on hand AND recent PO activity — potential overstock or inefficient procurement</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Risk class:</span>
+              <select class="mini-select" id="val-cross-filter" onchange="renderValCrossTable()">
+                <option value="">All</option>
+                <option value="Dead Stock">Dead Stock</option>
+                <option value="Potential Dead Stock">Potential DS</option>
+                <option value="Slow Moving">Slow Moving</option>
+                <option value="Insurance Item">Insurance Item</option>
+              </select>
+              <span class="chart-badge badge-red" id="val-cross-count-badge">—</span>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>DI Class</th><th>Item Code</th><th>Description</th><th>Product Group</th>
+                <th>Whse</th><th>Qty On Hand</th><th>Inv. Value (USD)</th>
+                <th>PO Lines</th><th>Recent PO Spend</th><th>Avg Cost</th><th>Flag</th>
+              </tr></thead>
+              <tbody id="val-cross-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="val-cross-pagination"></div>
+        </div>
+
+        <!-- Top Items by Inventory Value table -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">Top Items by Inventory Value</div>
+              <div class="chart-sub">Items ranked by on-hand value with DI classification and PO activity overlay</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Filter:</span>
+              <select class="mini-select" id="val-top-table-filter" onchange="renderValTopTable()">
+                <option value="">All Classes</option>
+                <option value="Dead Stock">Dead Stock</option>
+                <option value="Potential Dead Stock">Potential DS</option>
+                <option value="Slow Moving">Slow Moving</option>
+                <option value="Fast Moving">Fast Moving</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Item Code</th><th>Description</th><th>DI Class</th>
+                <th>Product Group</th><th>Whse</th><th>Qty On Hand</th>
+                <th>Avg Cost</th><th>Inv. Value (USD)</th><th>PO Lines</th><th>PO Spend (USD)</th>
+              </tr></thead>
+              <tbody id="val-top-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /val-section -->
+
+      <!-- ══ TRANSACTION / USAGE & REPLENISHMENT SECTION ══ -->
+      <div id="txn-section" style="display:none">
+
+        <div class="section-divider">
+          <div class="section-divider-line"></div>
+          <div class="section-divider-label"><span>◆</span>Usage Analysis &amp; Replenishment Planning</div>
+          <div class="section-divider-line"></div>
+        </div>
+
+        <!-- Usage KPIs -->
+        <div class="kpi-grid" style="margin-bottom:20px">
+          <div class="kpi-card" style="--kpi-color:var(--success)">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-label">Items with Usage Data</div>
+            <div class="kpi-value" id="kpi-txn-items">—</div>
+            <div class="kpi-sub" id="kpi-txn-period">— transactions</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#B33030">
+            <div class="kpi-icon">🚨</div>
+            <div class="kpi-label">Stockout Risk (&lt;30 days)</div>
+            <div class="kpi-value" id="kpi-txn-critical">—</div>
+            <div class="kpi-sub">items need urgent replenishment</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#C05010">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-label">Low Coverage (30–60d)</div>
+            <div class="kpi-value" id="kpi-txn-low">—</div>
+            <div class="kpi-sub">monitor for reorder</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--navy)">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-label">Avg Stock Coverage</div>
+            <div class="kpi-value" id="kpi-txn-avgcov">—</div>
+            <div class="kpi-sub">days across active items</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--info)">
+            <div class="kpi-icon">🔁</div>
+            <div class="kpi-label">Used but No PO</div>
+            <div class="kpi-value" id="kpi-txn-nopo">—</div>
+            <div class="kpi-sub">items with usage, no recent order</div>
+          </div>
+          <div class="kpi-card" style="--kpi-color:var(--gold)">
+            <div class="kpi-icon">💤</div>
+            <div class="kpi-label">Ordered but No Usage</div>
+            <div class="kpi-value" id="kpi-txn-nouse">—</div>
+            <div class="kpi-sub">PO items with zero consumption</div>
+          </div>
+        </div>
+
+        <!-- Usage Charts -->
+        <div class="charts-grid" style="margin-bottom:20px">
+          <div class="chart-card wide">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Monthly Consumption Trend</div>
+                <div class="chart-sub">Total quantity consumed per month across all items</div>
+              </div>
+              <div class="chart-controls">
+                <span class="chart-control-label">View:</span>
+                <select class="mini-select" id="txn-trend-view" onchange="renderTxnTrendChart()">
+                  <option value="qty">By Quantity</option>
+                  <option value="items">By Item Count</option>
+                </select>
+                <span class="chart-badge badge-green" id="txn-trend-badge">—</span>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-txn-trend"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Top 15 Items by Consumption</div>
+                <div class="chart-sub">Total quantity used over the transaction period</div>
+              </div>
+              <span class="chart-badge badge-navy" id="txn-top-badge">—</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-txn-top"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Stock Coverage Distribution</div>
+                <div class="chart-sub">Number of items by days of stock remaining</div>
+              </div>
+              <span class="chart-badge badge-red" id="txn-cov-badge">—</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-txn-coverage"></canvas></div>
+          </div>
+
+          <div class="chart-card wide">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Inventory vs Usage Comparison</div>
+                <div class="chart-sub">Top items — on-hand value vs monthly consumption value (items with both datasets)</div>
+              </div>
+              <span class="chart-badge badge-navy">CROSS-ANALYSIS</span>
+            </div>
+            <div class="chart-canvas-wrap tall"><canvas id="chart-txn-vs-inv"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Stockout Risk Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">🚨 Stockout Risk — Replenishment Alerts</div>
+              <div class="chart-sub">Items with active consumption and insufficient stock coverage — sorted by urgency</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Coverage:</span>
+              <select class="mini-select" id="txn-risk-filter" onchange="renderTxnRiskTable()">
+                <option value="">All Risk Levels</option>
+                <option value="critical">🔴 &lt; 30 days</option>
+                <option value="low">🟠 30–60 days</option>
+                <option value="medium">🟡 60–120 days</option>
+              </select>
+              <span class="chart-badge badge-red" id="txn-risk-count">—</span>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Coverage</th><th>Item Code</th><th>Description</th><th>DI Class</th>
+                <th>Whse</th><th>Qty On Hand</th><th>Avg Daily Use</th>
+                <th>Days Left</th><th>Last Used</th><th>ROP</th><th>Suggested ROQ</th>
+              </tr></thead>
+              <tbody id="txn-risk-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="txn-risk-pagination"></div>
+        </div>
+
+        <!-- Replenishment Recommendation Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">📋 Replenishment Recommendation</div>
+              <div class="chart-sub">ROP &amp; ROQ suggestions based on avg daily usage × lead time + safety stock (1.5× avg lead time assumption)</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Action:</span>
+              <select class="mini-select" id="txn-repl-filter" onchange="renderTxnReplTable()">
+                <option value="">All</option>
+                <option value="urgent">🔴 Order Urgent</option>
+                <option value="soon">🟠 Order Soon</option>
+                <option value="ok">🟢 OK</option>
+                <option value="hold">🔵 Hold — Overstock</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Action</th><th>Item Code</th><th>Description</th><th>DI Class</th>
+                <th>Qty On Hand</th><th>Avg Daily Use</th><th>Avg Lead Time</th>
+                <th>ROP</th><th>Suggested ROQ</th><th>Coverage Days</th><th>PO Activity</th>
+              </tr></thead>
+              <tbody id="txn-repl-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="txn-repl-pagination"></div>
+        </div>
+
+        <!-- Demand-Supply Mismatch Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <div class="chart-title">🔍 Demand–Supply Mismatch Analysis</div>
+              <div class="chart-sub">Items with anomalous relationships between purchasing behavior and actual consumption</div>
+            </div>
+            <div class="chart-controls">
+              <span class="chart-control-label">Type:</span>
+              <select class="mini-select" id="txn-mismatch-filter" onchange="renderTxnMismatchTable()">
+                <option value="">All Types</option>
+                <option value="used_no_po">Used but not ordered</option>
+                <option value="ordered_no_use">Ordered but unused</option>
+                <option value="dead_but_used">Dead Stock with usage</option>
+                <option value="spike">Usage spike</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Issue Type</th><th>Item Code</th><th>Description</th><th>DI Class</th>
+                <th>Avg Monthly Use</th><th>PO Lines</th><th>PO Spend (USD)</th>
+                <th>Qty On Hand</th><th>Inv. Value (USD)</th><th>Flag</th>
+              </tr></thead>
+              <tbody id="txn-mismatch-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /txn-section -->
+
+    </div><!-- /main-content -->
+  </div><!-- /dash-body -->
+</div><!-- /dashboard -->
+
+<script>
+// ════════════════════════════════════════════════════════
+//  MCG COLOR PALETTE FOR CHARTS
+// ════════════════════════════════════════════════════════
+const MCG = {
+  navy:     '#1B2E5C',
+  navyMid:  '#253870',
+  gold:     '#C4993A',
+  goldLt:   '#D4AD55',
+  copper:   '#A85C2A',
+  success:  '#2E7D52',
+  info:     '#1E5FA8',
+  danger:   '#B33030',
+  muted:    '#7B8899',
+};
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+const state = {
+  datasets: { order: null, recv: null },
+  rawFiles:  { order: null, recv: null, di: null, val: null, txn: null },
+  current: 'order',
+  diLookup:  {},
+  valLookup: {},
+  txnStats:  {},    // itemCode → computed usage stats
+  diRiskCache: [],
+  diRiskPage: 0, DI_RISK_PAGE_SIZE: 25,
+  valCrossRows: [], valCrossPage: 0, VAL_CROSS_PAGE_SIZE: 25,
+  txnRiskRows: [], txnRiskPage: 0, TXN_RISK_PAGE_SIZE: 25,
+  txnReplRows: [], txnReplPage: 0, TXN_REPL_PAGE_SIZE: 25,
+  filters: {
+    statuses: new Set(),
+    selectedWhses: new Set(),
+    whse: '', supplier: '', productGroup: '',
+    anomPrice: false, anomLead: false,
+    diMovements: new Set()
+  },
+  filtered: [],
+  charts: {},
+  anomalies: [],
+  anomPage: 0, ANOM_PAGE_SIZE: 20,
+};
+
+const ALL_STATUSES = [
+  'Completed','Goods Updated','On Order','In Transit','Ready to Print',
+  'Goods Returned','Cancelled','Backorder','In Transit - Shipped',
+  'Requisition - Approval Required','PO - Approval Required','Being Entered',
+  'Return - Ready to Print','Ready to Return'
+];
+const STATUS_COLORS = {
+  'Completed': MCG.success, 'Goods Updated': MCG.info, 'On Order': MCG.gold,
+  'In Transit': MCG.navyMid, 'In Transit - Shipped': '#4A78C4', 'Ready to Print': '#7C5CBF',
+  'Goods Returned': MCG.danger, 'Cancelled': MCG.muted, 'Backorder': MCG.copper,
+  'Requisition - Approval Required': '#B3508A', 'PO - Approval Required': '#D03060',
+  'Being Entered': '#94A3B8', 'Return - Ready to Print': '#C46060', 'Ready to Return': '#D48080'
+};
+const CHART_COLORS = [
+  MCG.navy, MCG.gold, MCG.copper, MCG.success, MCG.info,
+  MCG.navyMid, MCG.goldLt, '#6A3A8C', '#2E8A7C', '#8C6A2E',
+  '#3A6A8C', '#8C3A3A', '#5A8C3A', '#8C5A3A', '#3A8C5A'
+];
+
+// ════════════════════════════════════════════════════════
+//  GOOGLE DRIVE CONFIGURATION — EDIT THESE TWO VALUES
+// ════════════════════════════════════════════════════════
+const DRIVE_CONFIG = {
+  // Paste your deployed Apps Script Web App URL here:
+  APPS_SCRIPT_URL: 'https://script.google.com/a/macros/merdekacoppergold.com/s/AKfycbw3kTmfPj2h21Kj6qkvCdDk0Z_mI3oQc0E5m8eDANaLgXwRYOXEhcFeM85Lf94kGcm_Hw/exec',
+  // File name patterns — partial match, case-insensitive.
+  // As long as the file in Drive CONTAINS these strings in the name, it will be found.
+  FILE_PATTERNS: {
+    order: 'Order_Date',
+    recv:  'Received_Date',
+    di:    'DI_BSI',
+    val:   'Val_BSI',
+    txn:   'Transaction_BSI',
+  }
+};
+
+// ════════════════════════════════════════════════════════
+//  AUTO-LOAD FROM GOOGLE DRIVE
+// ════════════════════════════════════════════════════════
+async function fetchDriveFile(key) {
+  const url = `${DRIVE_CONFIG.APPS_SCRIPT_URL}?file=${key}&t=${Date.now()}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} for key=${key}`);
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || `Unknown error for key=${key}`);
+  return json; // { ok, name, base64, updated, size }
+}
+
+function setCardStatus(key, text, isOk) {
+  const el = document.getElementById('status-'+key);
+  const card = document.getElementById('card-'+key);
+  if (!el) return;
+  el.textContent = text;
+  if (isOk === true)  { card.classList.add('loaded'); card.style.borderColor=''; }
+  if (isOk === false) { card.style.borderColor='rgba(179,48,48,0.4)'; }
+}
+
+function parseBase64WithXLSX(base64, opts={}) {
+  const wb = XLSX.read(base64, { type:'base64', cellDates: true, ...opts });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:false });
+}
+
+async function autoLoadFromDrive() {
+  // Reset state
+  state.datasets = { order:null, recv:null };
+  state.diLookup = {}; state.valLookup = {}; state.txnStats = {};
+
+  document.getElementById('auto-load-error').style.display = 'none';
+  document.getElementById('launch-btn').style.display = 'none';
+
+  let anyPrimaryLoaded = false;
+  let latestUpdate = null;
+
+  // ── ORDER DATE ──
+  try {
+    setCardStatus('order', '⏳ Fetching…', null);
+    const r = await fetchDriveFile('order');
+    const rows = parseBase64WithXLSX(r.base64, {cellDates:true});
+    state.datasets.order = processRows(rows);
+    const n = state.datasets.order.length;
+    setCardStatus('order', `✓ ${n.toLocaleString()} rows  (${r.name})`, true);
+    anyPrimaryLoaded = true;
+    if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
+  } catch(e) {
+    setCardStatus('order', `✗ Not available`, false);
+    console.warn('Order file:', e.message);
+  }
+
+  // ── RECEIVED DATE ──
+  try {
+    setCardStatus('recv', '⏳ Fetching…', null);
+    const r = await fetchDriveFile('recv');
+    const rows = parseBase64WithXLSX(r.base64, {cellDates:true});
+    state.datasets.recv = processRows(rows);
+    const n = state.datasets.recv.length;
+    setCardStatus('recv', `✓ ${n.toLocaleString()} rows  (${r.name})`, true);
+    anyPrimaryLoaded = true;
+    if (!latestUpdate || r.updated > latestUpdate) latestUpdate = r.updated;
+  } catch(e) {
+    setCardStatus('recv', `✗ Not available`, false);
+    console.warn('Recv file:', e.message);
+  }
+
+  // ── DI MOVEMENT ──
+  try {
+    setCardStatus('di', '⏳ Fetching…', null);
+    const r = await fetchDriveFile('di');
+    const rows = parseBase64WithXLSX(r.base64);
+    // Re-use DI parsing logic inline (same as parseDIFile internals)
+    const lookup = {};
+    let itemCol=-1, movCol=-1, codeCol=-1;
+    for (let ri=0; ri<Math.min(5,rows.length); ri++) {
+      const row=rows[ri]; if(!row) continue;
+      row.forEach((cell,i)=>{ const v=(cell||'').toString().toLowerCase().trim();
+        if(v.includes('item code')) itemCol=i;
+        if(v.includes('class movement')&&!v.includes('code')) movCol=i;
+        if(v.includes('class movement')&&v.includes('code')) codeCol=i;
+      });
+      if(itemCol>=0&&movCol>=0) break;
+    }
+    if (itemCol>=0) {
+      for (let ri=1; ri<rows.length; ri++) {
+        const row=rows[ri]; if(!row) continue;
+        let code=(row[itemCol]||'').toString().trim();
+        if(code.startsWith("'")) code=code.slice(1).trim();
+        if(!code) continue;
+        const movement=(row[movCol]||'').toString().trim();
+        const mvCode=codeCol>=0?(row[codeCol]||'').toString().trim():'';
+        lookup[code]={ movement:movement||'Unspecified', code:mvCode };
+      }
+    }
+    state.diLookup = lookup;
+    const n = Object.keys(lookup).length;
+    setCardStatus('di', `✓ ${n.toLocaleString()} items classified`, true);
+  } catch(e) {
+    setCardStatus('di', `⚠ Not found — movement analysis disabled`, false);
+    console.warn('DI file:', e.message);
+  }
+
+  // ── INVENTORY VALUATION ──
+  try {
+    setCardStatus('val', '⏳ Fetching…', null);
+    const r = await fetchDriveFile('val');
+    const rows = parseBase64WithXLSX(r.base64);
+    // Re-use val parsing logic inline (same as parseValFile internals)
+    const lookup = {};
+    let cols = {};
+    for (let ri=0; ri<Math.min(5,rows.length); ri++) {
+      const row=rows[ri]; if(!row) continue;
+      row.forEach((cell,i)=>{ const v=(cell||'').toString().toLowerCase().trim();
+        if(v==='item code.1'||v==='sort by') cols.itemCode=cols.itemCode??i;
+        if(v==='item code'&&!cols.itemCode&&i<6) cols.itemCode=i;
+        if(v==='description'&&!v.includes('sort')) cols.desc=cols.desc??i;
+        if(v==='product group code') cols.pgCode=i;
+        if(v==='product group') cols.pg=i;
+        if(v==='abc class code') cols.abcClass=i;
+        if(v==='whse. code'||v==='whse code') cols.whseCode=i;
+        if(v==='warehouse') cols.warehouse=i;
+        if(v==='average cost') cols.avgCost=i;
+        if(v==='qty on hand') cols.qtyOnHand=i;
+        if(v==='on hand value') cols.onHandVal=i;
+        if(v==='consign. qty'||v==='consign qty') cols.consignQty=i;
+        if(v==='consign. value'||v==='consign value') cols.consignVal=i;
+      });
+      if(cols.itemCode!==undefined&&cols.onHandVal!==undefined) break;
+    }
+    for (let ri=1; ri<rows.length; ri++) {
+      const row=rows[ri]; if(!row) continue;
+      let code='';
+      if(rows[0]&&(rows[0][1]||'').toString().trim()==='Sort By') code=(row[1]||'').toString().trim();
+      else if(cols.itemCode!==undefined) code=(row[cols.itemCode]||'').toString().trim();
+      if(!code||code.startsWith('http')) continue;
+      if(code.startsWith("'")) code=code.slice(1).trim();
+      const qtyOnHand=parseFloat(row[cols.qtyOnHand]||0)||0;
+      const onHandVal=parseFloat(row[cols.onHandVal]||0)||0;
+      const avgCost=parseFloat(row[cols.avgCost]||0)||0;
+      if(!lookup[code]) lookup[code]=[];
+      lookup[code].push({
+        qtyOnHand, onHandVal, avgCost,
+        pgCode:(row[cols.pgCode]||'').toString().trim(),
+        pg:(row[cols.pg]||'').toString().trim(),
+        abcClass:(row[cols.abcClass]||'').toString().trim(),
+        whseCode:(row[cols.whseCode]||'').toString().trim(),
+        warehouse:(row[cols.warehouse]||'').toString().trim(),
+        desc:(row[cols.desc]||'').toString().trim(),
+        consignQty:parseFloat(row[cols.consignQty]||0)||0,
+        consignVal:parseFloat(row[cols.consignVal]||0)||0,
+      });
+    }
+    state.valLookup = lookup;
+    const n = Object.keys(lookup).length;
+    setCardStatus('val', `✓ ${n.toLocaleString()} SKUs valued`, true);
+  } catch(e) {
+    setCardStatus('val', `⚠ Not found — valuation analysis disabled`, false);
+    console.warn('Val file:', e.message);
+  }
+
+  // ── TRANSACTION / USAGE ──
+  try {
+    setCardStatus('txn', '⏳ Fetching…', null);
+    const r = await fetchDriveFile('txn');
+    // parseTxnFile accepts a File; re-wrap base64 bytes as a Blob so it stays compatible
+    const binary = atob(r.base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i=0; i<binary.length; i++) bytes[i]=binary.charCodeAt(i);
+    const blob = new Blob([bytes]);
+    state.txnStats = await parseTxnFile(blob);
+    const n = Object.keys(state.txnStats).length;
+    setCardStatus('txn', `✓ ${n.toLocaleString()} items tracked`, true);
+  } catch(e) {
+    setCardStatus('txn', `⚠ Not found — usage analysis disabled`, false);
+    console.warn('Txn file:', e.message);
+  }
+
+  if (!anyPrimaryLoaded) {
+    // Nothing loaded — show error and let user upload manually
+    document.getElementById('auto-load-desc').textContent = 'Could not connect to Google Drive data source.';
+    document.getElementById('auto-load-error').style.display = '';
+    document.getElementById('auto-load-note').style.display = 'none';
+    return;
+  }
+
+  // Enrich with DI + Valuation
+  if (Object.keys(state.diLookup).length > 0) {
+    if (state.datasets.order) enrichWithDI(state.datasets.order);
+    if (state.datasets.recv)  enrichWithDI(state.datasets.recv);
+  }
+  if (Object.keys(state.valLookup).length > 0) {
+    if (state.datasets.order) enrichWithVal(state.datasets.order);
+    if (state.datasets.recv)  enrichWithVal(state.datasets.recv);
+  }
+
+  // Update nav timestamp
+  if (latestUpdate) {
+    const d = new Date(latestUpdate);
+    const label = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const ticker = document.getElementById('nav-last-updated');
+    if (ticker) ticker.textContent = `Data as of ${label}`;
+  }
+
+  document.getElementById('auto-load-desc').textContent = 'All data loaded successfully from Google Drive.';
+  document.getElementById('auto-load-note').textContent = 'Data is refreshed daily. Click "Open Dashboard" to proceed.';
+  document.getElementById('launch-btn').style.display = '';
+}
+
+function launchWithLoadedData() {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('loading-screen').classList.add('active');
+  setLoading('Computing analytics…', 90);
+  setTimeout(async () => {
+    try {
+      initDashboard();
+      setLoading('Ready', 100);
+      await sleep(200);
+    } catch(err) {
+      console.error(err);
+      alert('Error initialising dashboard: '+err.message);
+      document.getElementById('upload-screen').style.display = '';
+    } finally {
+      document.getElementById('loading-screen').classList.remove('active');
+      document.getElementById('nav-refresh-btn').style.display = '';
+      document.getElementById('nav-last-updated').style.display = '';
+    }
+  }, 80);
+}
+
+async function refreshDashboard() {
+  // Go back to load screen and re-fetch
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('nav-ticker').style.display = 'none';
+  document.getElementById('nav-refresh-btn').style.display = 'none';
+  // Reset card statuses
+  ['order','recv','di','val','txn'].forEach(k => {
+    setCardStatus(k, '⏳ Fetching from Drive…', null);
+    const card = document.getElementById('card-'+k);
+    if (card) { card.classList.remove('loaded'); card.style.borderColor=''; }
+  });
+  document.getElementById('launch-btn').style.display = 'none';
+  document.getElementById('auto-load-error').style.display = 'none';
+  document.getElementById('auto-load-desc').textContent = 'Refreshing data from Google Drive…';
+  document.getElementById('upload-screen').style.display = '';
+  await autoLoadFromDrive();
+}
+
+function showManualUpload(e) {
+  if (e) e.preventDefault();
+  document.getElementById('manual-upload-section').style.display = '';
+  document.getElementById('auto-load-grid').style.display = 'none';
+  document.getElementById('auto-load-desc').textContent = 'Manual upload mode — select your files below.';
+  document.getElementById('auto-load-note').style.display = 'none';
+}
+
+// Kick off auto-load when page loads
+window.addEventListener('DOMContentLoaded', () => {
+  // Only auto-load if APPS_SCRIPT_URL has been configured
+  if (DRIVE_CONFIG.APPS_SCRIPT_URL && !DRIVE_CONFIG.APPS_SCRIPT_URL.includes('YOUR_DEPLOYMENT_ID')) {
+    autoLoadFromDrive();
+  } else {
+    // URL not yet configured — show config notice
+    ['order','recv','di','val','txn'].forEach(k => setCardStatus(k, '⚙ Configure APPS_SCRIPT_URL first', null));
+    document.getElementById('auto-load-desc').textContent = 'Set your Apps Script URL in DRIVE_CONFIG to enable auto-loading.';
+    document.getElementById('auto-load-note').innerHTML =
+      'See the <strong>deployment guide</strong> for setup instructions.';
+  }
+});
+
+// ════════════════════════════════════════════════════════
+//  UPLOAD (manual fallback — kept for compatibility)
+// ════════════════════════════════════════════════════════
+function onDrag(e, key) { e.preventDefault(); document.getElementById('card-'+key+'-m')?.classList.add('drag-over'); }
+function offDrag(key)   { document.getElementById('card-'+key+'-m')?.classList.remove('drag-over'); }
+function onDrop(e, key) { e.preventDefault(); offDrag(key); const f=e.dataTransfer.files[0]; if(f) processUpload(f,key); }
+function handleFile(e, key) { const f=e.target.files[0]; if(f) processUpload(f,key); }
+
+function processUpload(file, key) {
+  state.rawFiles[key] = file;
+  document.getElementById('card-'+key+'-m')?.classList.add('loaded');
+  const mb=(file.size/1024/1024).toFixed(1);
+  const hints = { di:' — Movement data ready', val:' — Valuation data ready', txn:' — Usage data ready' };
+  const statusEl = document.getElementById('status-'+key+'-m');
+  if (statusEl) statusEl.textContent = `✓ ${file.name}  (${mb} MB)${hints[key]||''}`;
+  const has = state.rawFiles.order || state.rawFiles.recv;
+  document.getElementById('launch-btn-manual').classList.toggle('ready', !!has);
+}
+
+async function launchDashboard() {
+  if (!state.rawFiles.order && !state.rawFiles.recv) return;
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('loading-screen').classList.add('active');
+  await sleep(50);
+  try {
+    if (state.rawFiles.order) {
+      setLoading('Parsing Order Date file…', 8);
+      await sleep(30);
+      state.datasets.order = await parseFile(state.rawFiles.order, p => setLoading('Parsing Order Date file…', 8+p*0.25));
+    }
+    if (state.rawFiles.recv) {
+      setLoading('Parsing Received Date file…', 38);
+      await sleep(30);
+      state.datasets.recv = await parseFile(state.rawFiles.recv, p => setLoading('Parsing Received Date file…', 38+p*0.22));
+    }
+    if (state.rawFiles.di) {
+      setLoading('Parsing DI Movement data…', 63);
+      await sleep(30);
+      state.diLookup = await parseDIFile(state.rawFiles.di);
+      setLoading('Joining DI classifications to PO data…', 72);
+      await sleep(20);
+      if (state.datasets.order) enrichWithDI(state.datasets.order);
+      if (state.datasets.recv)  enrichWithDI(state.datasets.recv);
+    }
+    if (state.rawFiles.val) {
+      setLoading('Parsing Inventory Valuation data…', 73);
+      await sleep(30);
+      state.valLookup = await parseValFile(state.rawFiles.val);
+      setLoading('Joining inventory positions to PO data…', 82);
+      await sleep(20);
+      if (state.datasets.order) enrichWithVal(state.datasets.order);
+      if (state.datasets.recv)  enrichWithVal(state.datasets.recv);
+    }
+    if (state.rawFiles.txn) {
+      setLoading('Parsing Transaction / Usage data…', 87);
+      await sleep(30);
+      state.txnStats = await parseTxnFile(state.rawFiles.txn);
+    }
+    setLoading('Computing analytics…', 93);
+    await sleep(30);
+    initDashboard();
+    setLoading('Ready', 100);
+    await sleep(200);
+    document.getElementById('nav-refresh-btn').style.display = '';
+    document.getElementById('nav-upload-btn').style.display = '';
+    document.getElementById('nav-last-updated').style.display = '';
+  } catch(err) {
+    console.error(err);
+    alert('Error parsing file: '+err.message);
+    document.getElementById('upload-screen').style.display = '';
+  } finally {
+    document.getElementById('loading-screen').classList.remove('active');
+  }
+}
+
+function setLoading(msg, pct) {
+  document.getElementById('loading-text').textContent = msg;
+  document.getElementById('loader-bar').style.width = pct+'%';
+}
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+async function parseFile(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        onProgress&&onProgress(0.3);
+        const wb = XLSX.read(e.target.result, {type:'binary',cellDates:true});
+        onProgress&&onProgress(0.6);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1,defval:null,raw:false});
+        onProgress&&onProgress(0.9);
+        resolve(processRows(rows));
+      } catch(err){reject(err);}
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  DI MOVEMENT FILE PARSER
+// ════════════════════════════════════════════════════════
+async function parseDIFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+        const lookup = {};
+        // Find header row — look for "Item Code" column
+        let itemCol=-1, movCol=-1, codeCol=-1;
+        for (let r=0;r<Math.min(5,rows.length);r++) {
+          const row = rows[r];
+          if (!row) continue;
+          row.forEach((cell,i)=>{
+            const v=(cell||'').toString().toLowerCase().trim();
+            if (v.includes('item code')) itemCol=i;
+            if (v.includes('class movement') && !v.includes('code')) movCol=i;
+            if (v.includes('class movement') && v.includes('code')) codeCol=i;
+          });
+          if (itemCol>=0 && movCol>=0) break;
+        }
+        if (itemCol<0) { resolve({}); return; }
+        for (let r=1; r<rows.length; r++) {
+          const row=rows[r]; if (!row) continue;
+          let code=(row[itemCol]||'').toString().trim();
+          if (code.startsWith("'")) code=code.slice(1).trim(); // strip leading apostrophe
+          if (!code) continue;
+          const movement=(row[movCol]||'').toString().trim();
+          const mvCode=codeCol>=0?(row[codeCol]||'').toString().trim():'';
+          if (code) lookup[code]={ movement: movement||'Unspecified', code: mvCode };
+        }
+        resolve(lookup);
+      } catch(err){reject(err);}
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+// Attach DI classification to each PO row (mutates in place)
+function enrichWithDI(dataset) {
+  for (const r of dataset) {
+    const di = state.diLookup[r.itemCode];
+    r.diMovement = di ? di.movement : 'Not in DI';
+    r.diCode     = di ? di.code     : '';
+    // Compute risk level for this row
+    r.diRisk = getDIRisk(r.diMovement);
+  }
+}
+
+function getDIRisk(movement) {
+  if (!movement) return 'none';
+  const m = movement.toLowerCase();
+  if (m.includes('dead stock') && !m.includes('potential')) return 'critical';
+  if (m.includes('potential')) return 'high';
+  if (m.includes('slow'))      return 'medium';
+  if (m.includes('insurance')) return 'low';
+  return 'none';
+}
+
+// ════════════════════════════════════════════════════════
+//  INVENTORY VALUATION FILE PARSER
+// ════════════════════════════════════════════════════════
+async function parseValFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+        const lookup = {};    // itemCode → array of warehouse records
+
+        // Auto-detect columns from header row
+        let cols = {};
+        for (let r = 0; r < Math.min(5, rows.length); r++) {
+          const row = rows[r]; if (!row) continue;
+          row.forEach((cell, i) => {
+            const v = (cell||'').toString().toLowerCase().trim();
+            if (v === 'item code.1' || v === 'sort by') cols.itemCode = cols.itemCode ?? i;
+            if (v === 'item code' && !cols.itemCode && i < 6) cols.itemCode = i;
+            if (v === 'description' && !v.includes('sort')) cols.desc = cols.desc ?? i;
+            if (v === 'product group code') cols.pgCode = i;
+            if (v === 'product group') cols.pg = i;
+            if (v === 'abc class code') cols.abcClass = i;
+            if (v === 'whse. code' || v === 'whse code') cols.whseCode = i;
+            if (v === 'warehouse') cols.warehouse = i;
+            if (v === 'average cost') cols.avgCost = i;
+            if (v === 'qty on hand') cols.qtyOnHand = i;
+            if (v === 'on hand value') cols.onHandVal = i;
+            if (v === 'consign. qty' || v === 'consign qty') cols.consignQty = i;
+            if (v === 'consign. value' || v === 'consign value') cols.consignVal = i;
+          });
+          if (cols.itemCode !== undefined && cols.onHandVal !== undefined) break;
+        }
+
+        // Fallback: use 'Item Code.1' which is index 4 in Val_BSI file
+        if (cols.itemCode === undefined) {
+          // Try to find by checking row data patterns
+          const hdr = rows[0] || [];
+          hdr.forEach((c,i)=>{ if((c||'').toString().includes('Item Code')) cols.itemCode = cols.itemCode ?? i; });
+        }
+
+        for (let r = 1; r < rows.length; r++) {
+          const row = rows[r]; if (!row) continue;
+
+          // Use 'Sort By' (col 1 in this file = clean item code) or detected column
+          let code = '';
+          // Priority: col 1 which is 'Sort By' = clean item code in Val_BSI
+          if (rows[0] && (rows[0][1]||'').toString().trim() === 'Sort By') {
+            code = (row[1]||'').toString().trim();
+          } else if (cols.itemCode !== undefined) {
+            code = (row[cols.itemCode]||'').toString().trim();
+          }
+          if (!code || code.startsWith('http')) continue;
+          if (code.startsWith("'")) code = code.slice(1).trim();
+
+          const qtyOnHand  = parseFloat(row[cols.qtyOnHand]||0)  || 0;
+          const onHandVal  = parseFloat(row[cols.onHandVal]||0)   || 0;
+          const avgCost    = parseFloat(row[cols.avgCost]||0)     || 0;
+          const pgCode     = (row[cols.pgCode]||'').toString().trim();
+          const pg         = (row[cols.pg]||'').toString().trim();
+          const abcClass   = (row[cols.abcClass]||'').toString().trim();
+          const whseCode   = (row[cols.whseCode]||'').toString().trim();
+          const warehouse  = (row[cols.warehouse]||'').toString().trim();
+          const desc       = (row[cols.desc]||'').toString().trim();
+          const consignQty = parseFloat(row[cols.consignQty]||0)  || 0;
+          const consignVal = parseFloat(row[cols.consignVal]||0)   || 0;
+
+          if (!lookup[code]) lookup[code] = [];
+          lookup[code].push({ qtyOnHand, onHandVal, avgCost, pgCode, pg, abcClass, whseCode, warehouse, desc, consignQty, consignVal });
+        }
+        resolve(lookup);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+// Attach inventory position to each PO row (mutates in place)
+function enrichWithVal(dataset) {
+  for (const r of dataset) {
+    const records = state.valLookup[r.itemCode];
+    if (records && records.length > 0) {
+      // Aggregate across warehouses
+      const totalQty = records.reduce((s, x) => s + x.qtyOnHand, 0);
+      const totalVal = records.reduce((s, x) => s + x.onHandVal, 0);
+      const avgCost  = records[0].avgCost;
+      r.invQtyOnHand  = totalQty;
+      r.invOnHandVal  = totalVal;
+      r.invAvgCost    = avgCost;
+      r.invPg         = records[0].pg;
+      r.invPgCode     = records[0].pgCode;
+      r.invAbcClass   = records[0].abcClass;
+      r.hasInventory  = totalVal > 0 || totalQty > 0;
+    } else {
+      r.invQtyOnHand = 0; r.invOnHandVal = 0; r.invAvgCost = 0;
+      r.invPg = ''; r.invPgCode = ''; r.invAbcClass = '';
+      r.hasInventory = false;
+    }
+  }
+}
+
+function buildProductGroupDropdown() {
+  // Collect all product groups from valuation lookup
+  const pgs = new Set();
+  for (const records of Object.values(state.valLookup)) {
+    for (const rec of records) { if (rec.pg) pgs.add(rec.pg); }
+  }
+  const sel = document.getElementById('f-product-group');
+  sel.innerHTML = '<option value="">All Product Groups</option>';
+  [...pgs].sort().forEach(pg => {
+    sel.innerHTML += `<option value="${pg}">${pg}</option>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  TRANSACTION / USAGE FILE PARSER
+// ════════════════════════════════════════════════════════
+async function parseTxnFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+
+        // Auto-detect column indices from header row
+        let cols = {};
+        for (let r = 0; r < Math.min(3, rows.length); r++) {
+          const row = rows[r]; if (!row) continue;
+          row.forEach((cell, i) => {
+            const v = (cell||'').toString().toLowerCase().trim();
+            if (v === 'stock code')        cols.code      = i;
+            if (v === 'description')       cols.desc      = cols.desc ?? i;
+            if (v === 'trans date')        cols.date      = i;
+            if (v === 'warehouse code')    cols.whse      = i;
+            if (v === 'quantity')          cols.qty       = i;
+            if (v === 'value')             cols.value     = i;
+            if (v === 'product group desc') cols.pg       = i;
+            if (v === 'trans type')        cols.type      = i;
+          });
+          if (cols.code !== undefined && cols.date !== undefined) break;
+        }
+
+        // Build per-item usage stats
+        const byItem = {};   // code → { months:{M→qty}, dailyRates:[], lastDate, total, txnCount, warehouses }
+        const txnDateMin = new Date('2100-01-01'), txnDateMax = new Date('1970-01-01');
+        let globalMin = txnDateMax, globalMax = txnDateMin;
+
+        for (let r = 1; r < rows.length; r++) {
+          const row = rows[r]; if (!row) continue;
+          const code = (row[cols.code]||'').toString().trim(); if (!code) continue;
+          const qty  = parseFloat(row[cols.qty]) || 0;
+          // Only consumption (negative qty) — positive are returns
+          const usedQty = qty < 0 ? Math.abs(qty) : 0;
+          if (usedQty === 0) continue;
+
+          let txDate = null;
+          const rawDate = row[cols.date];
+          if (rawDate instanceof Date) txDate = rawDate;
+          else if (typeof rawDate === 'string' && rawDate) txDate = new Date(rawDate);
+          if (!txDate || isNaN(txDate)) continue;
+
+          if (txDate < globalMin) globalMin = txDate;
+          if (txDate > globalMax) globalMax = txDate;
+
+          const monthKey = `${txDate.getFullYear()}-${String(txDate.getMonth()+1).padStart(2,'0')}`;
+          const whse = (row[cols.whse]||'').toString().trim();
+
+          if (!byItem[code]) byItem[code] = { months:{}, total:0, txnCount:0, lastDate:null, warehouses:new Set(), desc:'' };
+          const x = byItem[code];
+          x.months[monthKey] = (x.months[monthKey]||0) + usedQty;
+          x.total += usedQty;
+          x.txnCount++;
+          if (!x.lastDate || txDate > x.lastDate) x.lastDate = txDate;
+          if (whse) x.warehouses.add(whse);
+          if (!x.desc && cols.desc !== undefined) x.desc = (row[cols.desc]||'').toString().trim();
+        }
+
+        // Compute derived stats
+        const spanDays = globalMin < globalMax
+          ? Math.max(1, Math.round((globalMax - globalMin) / 86400000) + 1)
+          : 75; // fallback 75 days (3 months)
+
+        const stats = {};
+        for (const [code, x] of Object.entries(byItem)) {
+          const months = Object.keys(x.months).sort();
+          const monthlyVals = months.map(m => x.months[m]);
+          const avgMonthly = monthlyVals.length ? monthlyVals.reduce((a,b)=>a+b,0)/monthlyVals.length : 0;
+          const avgDaily   = x.total / spanDays;
+
+          // Simple trend: compare first half vs second half of monthly data
+          let trend = 'stable';
+          if (monthlyVals.length >= 2) {
+            const half = Math.floor(monthlyVals.length/2);
+            const firstHalf = monthlyVals.slice(0,half).reduce((a,b)=>a+b,0)/half;
+            const secondHalf = monthlyVals.slice(half).reduce((a,b)=>a+b,0)/(monthlyVals.length-half);
+            const chg = firstHalf > 0 ? (secondHalf-firstHalf)/firstHalf : 0;
+            if (chg >  0.2) trend = 'increasing';
+            else if (chg < -0.2) trend = 'decreasing';
+          }
+
+          // Coefficient of variation for volatility
+          const mean = avgMonthly;
+          const variance = monthlyVals.length > 1
+            ? monthlyVals.reduce((s,v)=>s+(v-mean)**2,0)/(monthlyVals.length-1) : 0;
+          const cv = mean > 0 ? Math.sqrt(variance)/mean : 0;
+
+          stats[code] = {
+            total:       x.total,
+            avgMonthly,
+            avgDaily,
+            txnCount:    x.txnCount,
+            lastDate:    x.lastDate,
+            months:      x.months,
+            monthlyVals,
+            trend,
+            cv,           // coefficient of variation (0=stable, >0.5=volatile)
+            warehouses:  [...x.warehouses],
+            desc:        x.desc,
+            spanDays,
+          };
+        }
+        resolve(stats);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+const DI_CLASS_STYLE = {
+  'Potential Dead Stock':'di-potential',
+  'Slow Moving':         'di-slow',
+  'Insurance Item':      'di-insurance',
+  'Fast Moving':         'di-fast',
+  'Medium Moving':       'di-medium',
+  'New Ansi':            'di-new',
+  'Critical':            'di-critical',
+  'Unspecified':         'di-unspecified',
+  'Not in DI':           'di-none',
+};
+
+function diBadge(movement) {
+  const cls = DI_CLASS_STYLE[movement] || 'di-none';
+  const icons = {
+    'Dead Stock':'💀','Potential Dead Stock':'⚠️','Slow Moving':'🐢',
+    'Insurance Item':'🛡️','Fast Moving':'🚀','Medium Moving':'➡️',
+    'New Ansi':'✨','Critical':'🔥','Unspecified':'❓','Not in DI':'–'
+  };
+  return `<span class="di-badge ${cls}">${icons[movement]||''} ${movement||'—'}</span>`;
+}
+
+const RISK_ICONS = { critical:'🔴', high:'🟠', medium:'🟡', low:'🔵', none:'' };
+const RISK_LABELS = { critical:'Dead Stock', high:'Potential DS', medium:'Slow Moving', low:'Insurance Item', none:'' };
+
+
+const COL = {
+  ORDER_NO:0, ORD_VAL_USD:1, BF:2, LINE_SEQ:3,
+  SUPP_CODE:4, SUPP_NAME:5, PAYMENT_TERMS:6, WHSE:7,
+  ITEM_CODE:8, ITEM_DESC:9, ORDER_DATE:10, ACTION_DATE:11,
+  ARRIVAL_DATE:12, RECV_DATE:13, STATUS:14, GL:15,
+  INVOICE_DATE:16, PROJECT:17, UOM:18,
+  ORD_QTY:19, BO_QTY:20, RECV_QTY:21, IT_QTY:22,
+  RECV_VAL:23, IT_VAL:24, CURRENCY:25, ORD_VALUE:26,
+  ORD_VAL_AB:27  // Column AB — "Ordered Value (Local)" — USD-standardised single source of truth
+};
+
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v)?null:v;
+  if (typeof v==='string') { const d=new Date(v); return isNaN(d)?null:d; }
+  return null;
+}
+
+function processRows(rows) {
+  if (!rows||rows.length<2) return [];
+  const out=[]; const itemPrices={};
+  for (let i=1;i<rows.length;i++) {
+    const r=rows[i];
+    if (!r||r.every(c=>c===null||c===undefined||c==='')) continue;
+    const whse=(r[COL.WHSE]||'').toString().trim();
+    const status=(r[COL.STATUS]||'').toString().trim();
+    const suppName=(r[COL.SUPP_NAME]||'').toString().trim();
+    const itemCode=(r[COL.ITEM_CODE]||'').toString().trim();
+    const itemDesc=(r[COL.ITEM_DESC]||'').toString().trim();
+    const orderDate=parseDate(r[COL.ORDER_DATE]);
+    const recvDate=parseDate(r[COL.RECV_DATE]);
+    const ordQty=parseFloat(r[COL.ORD_QTY])||0;
+
+    // Backorder Flag filter: skip any row with a non-blank BF value
+    const bfVal=(r[COL.BF]||'').toString().trim();
+    if (bfVal !== '') continue;
+
+    // Single source of value: Column AB — "Ordered Value (Local)" in USD
+    const ordValueUSD=parseFloat(r[COL.ORD_VAL_AB])||0;
+    const orderNo=r[COL.ORDER_NO];
+    const isConsignment=whse.length>=4&&whse.startsWith('C');
+    const leadTime=(orderDate&&recvDate)?Math.round((recvDate-orderDate)/86400000):null;
+
+    // Unit price in USD (standardised)
+    const unitPrice=(ordQty!==0)?Math.abs(ordValueUSD/ordQty):null;
+
+    if (unitPrice!==null&&itemCode) { if(!itemPrices[itemCode]) itemPrices[itemCode]=[]; itemPrices[itemCode].push(unitPrice); }
+    out.push({ orderNo,whse,status,suppCode:(r[COL.SUPP_CODE]||'').toString().trim(),
+      suppName,itemCode,itemDesc,orderDate,recvDate,
+      ordQty,ordValueUSD,
+      isConsignment,leadTime,unitPrice,
+      isServ:whse==='SERV',isWspc:whse==='WSPC' });
+  }
+  // anomaly stats
+  const itemAvg={},itemStd={};
+  for (const [item,prices] of Object.entries(itemPrices)) {
+    if (prices.length<2) continue;
+    const avg=prices.reduce((a,b)=>a+b,0)/prices.length;
+    const std=Math.sqrt(prices.reduce((a,b)=>a+(b-avg)**2,0)/prices.length);
+    itemAvg[item]=avg; itemStd[item]=std;
+  }
+  const ltVals=out.map(r=>r.leadTime).filter(v=>v!==null&&v>=0&&v<365);
+  const ltAvg=ltVals.length?ltVals.reduce((a,b)=>a+b,0)/ltVals.length:0;
+  const ltStd=ltVals.length?Math.sqrt(ltVals.reduce((a,b)=>a+(b-ltAvg)**2,0)/ltVals.length):1;
+  const itemQtys={};
+  out.forEach(r=>{ if(!r.itemCode||r.ordQty===0) return; const k=r.itemCode; if(!itemQtys[k]) itemQtys[k]=[]; itemQtys[k].push(Math.abs(r.ordQty)); });
+  const itemQtyAvg={},itemQtyStd={};
+  for (const [k,vals] of Object.entries(itemQtys)) {
+    if (vals.length<3) continue;
+    const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const std=Math.sqrt(vals.reduce((a,b)=>a+(b-avg)**2,0)/vals.length);
+    itemQtyAvg[k]=avg; itemQtyStd[k]=std;
+  }
+  for (const r of out) {
+    r.anomalyTypes=[]; r.priceZScore=null; r.leadZScore=null; r.qtyZScore=null;
+    if (r.unitPrice!==null&&itemAvg[r.itemCode]&&itemStd[r.itemCode]>0) {
+      const z=(r.unitPrice-itemAvg[r.itemCode])/itemStd[r.itemCode];
+      r.priceZScore=z; r.itemAvgPrice=itemAvg[r.itemCode];
+      if (Math.abs(z)>2.5) r.anomalyTypes.push('price');
+    }
+    if (r.leadTime!==null&&r.leadTime>=0&&ltStd>0) {
+      const z=(r.leadTime-ltAvg)/ltStd; r.leadZScore=z;
+      if (Math.abs(z)>2.5) r.anomalyTypes.push('lead');
+    }
+    if (r.itemCode&&itemQtyAvg[r.itemCode]&&itemQtyStd[r.itemCode]>0) {
+      const z=(Math.abs(r.ordQty)-itemQtyAvg[r.itemCode])/itemQtyStd[r.itemCode]; r.qtyZScore=z;
+      if (Math.abs(z)>2.5) r.anomalyTypes.push('qty');
+    }
+    r.hasAnomaly=r.anomalyTypes.length>0;
+  }
+  return out;
+}
+
+// ════════════════════════════════════════════════════════
+//  DASHBOARD INIT
+// ════════════════════════════════════════════════════════
+function initDashboard() {
+  state.current = state.datasets.order?'order':'recv';
+  document.getElementById('tab-order').disabled = !state.datasets.order;
+  document.getElementById('tab-recv').disabled  = !state.datasets.recv;
+  buildStatusCheckboxes(); buildWhseCheckboxes(); initDateRange();
+  const hasDI = Object.keys(state.diLookup).length > 0;
+  document.getElementById('di-section').style.display        = hasDI ? '' : 'none';
+  document.getElementById('di-filter-section').style.display = hasDI ? '' : 'none';
+  document.getElementById('di-rules-line').style.display     = hasDI ? '' : 'none';
+  if (hasDI) buildDICheckboxes();
+  const hasVal = Object.keys(state.valLookup).length > 0;
+  document.getElementById('val-section').style.display        = hasVal ? '' : 'none';
+  document.getElementById('val-filter-section').style.display = hasVal ? '' : 'none';
+  document.getElementById('val-rules-line').style.display     = hasVal ? '' : 'none';
+  if (hasVal) buildProductGroupDropdown();
+  // Transaction / Usage setup
+  const hasTxn = Object.keys(state.txnStats).length > 0;
+  document.getElementById('txn-section').style.display    = hasTxn ? '' : 'none';
+  document.getElementById('txn-rules-line').style.display = hasTxn ? '' : 'none';
+  document.getElementById('dashboard').classList.add('active');
+  document.getElementById('nav-ticker').style.display='';
+  applyFilters();
+}
+
+function buildStatusCheckboxes() {
+  const data=state.datasets[state.current]||[];
+  const present=new Set(data.map(r=>r.status).filter(Boolean));
+  const container=document.getElementById('status-checkboxes');
+  container.innerHTML='';
+  state.filters.statuses=new Set([...present].filter(s=>s!=='Cancelled'));
+  for (const s of ALL_STATUSES) {
+    if (!present.has(s)) continue;
+    const chk=state.filters.statuses.has(s);
+    const color=STATUS_COLORS[s]||MCG.muted;
+    container.innerHTML+=`<label class="checkbox-item">
+      <input type="checkbox" ${chk?'checked':''} data-status="${s}" onchange="toggleStatus('${s}',this.checked)">
+      <div class="checkbox-box"></div>
+      <span class="checkbox-text"><span class="status-dot" style="background:${color}"></span>${s}</span>
+    </label>`;
+  }
+}
+function toggleStatus(s,chk) { if(chk) state.filters.statuses.add(s); else state.filters.statuses.delete(s); }
+
+function buildWhseCheckboxes() {
+  const data = state.datasets[state.current] || [];
+  // Collect all unique warehouse codes with their row counts
+  const whseCounts = {};
+  for (const r of data) {
+    if (r.whse) whseCounts[r.whse] = (whseCounts[r.whse] || 0) + 1;
+  }
+  const codes = Object.keys(whseCounts).sort();
+
+  // Determine which are consignment (C + 4 chars), SERV, WSPC
+  const getWhseType = w => {
+    if (w === 'SERV') return 'service';
+    if (w === 'WSPC') return 'special';
+    if (w.trim().length >= 4 && w.trim().startsWith('C')) return 'consignment';
+    return 'operational';
+  };
+  const typeLabels = { operational:'', consignment:' · Consignment', service:' · Service', special:' · Special' };
+  const typeColors = { operational:MCG.navy, consignment:MCG.gold, service:MCG.muted, special:MCG.copper };
+
+  // Default: all warehouses selected (empty set = all shown)
+  state.filters.selectedWhses = new Set();
+
+  const container = document.getElementById('whse-checkboxes');
+  container.innerHTML = '';
+  for (const w of codes) {
+    const type  = getWhseType(w);
+    const color = typeColors[type];
+    const label = typeLabels[type];
+    const count = whseCounts[w] || 0;
+    container.innerHTML += `
+      <label class="checkbox-item">
+        <input type="checkbox" checked data-whse="${w}" onchange="toggleWhse('${w}', this.checked)">
+        <div class="checkbox-box"></div>
+        <span class="checkbox-text" style="display:flex;justify-content:space-between;width:100%;gap:4px">
+          <span>
+            <span style="font-family:var(--mono);font-size:0.68rem;font-weight:600;color:${color}">${w.trim()}</span>
+            <span style="color:var(--text-light);font-size:0.6rem">${label}</span>
+          </span>
+          <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-muted)">${count.toLocaleString()}</span>
+        </span>
+      </label>`;
+  }
+  updateWhseCount();
+}
+
+function toggleWhse(code, checked) {
+  if (checked) {
+    state.filters.selectedWhses.delete(code);
+  } else {
+    state.filters.selectedWhses.add(code);
+  }
+  updateWhseCount();
+}
+
+function whseSelectAll(select) {
+  state.filters.selectedWhses = new Set();
+  document.querySelectorAll('#whse-checkboxes input[type=checkbox]').forEach(cb => {
+    cb.checked = select;
+    if (!select) state.filters.selectedWhses.add(cb.dataset.whse);
+  });
+  updateWhseCount();
+  applyFilters();
+}
+
+function updateWhseCount() {
+  const total  = document.querySelectorAll('#whse-checkboxes input[type=checkbox]').length;
+  const excluded = state.filters.selectedWhses.size;
+  const selected = total - excluded;
+  const el = document.getElementById('whse-selected-count');
+  if (el) el.textContent = `${selected} / ${total}`;
+}
+
+function buildDICheckboxes() {
+  const allMovements = [
+    'Dead Stock','Potential Dead Stock','Slow Moving','Insurance Item',
+    'Fast Moving','Medium Moving','New Ansi','Critical','Unspecified','Not in DI'
+  ];
+  const container = document.getElementById('di-checkboxes');
+  container.innerHTML = '';
+  // Default: all selected
+  state.filters.diMovements = new Set(); // empty = all shown
+  for (const m of allMovements) {
+    const cls = DI_CLASS_STYLE[m] || 'di-none';
+    container.innerHTML += `<label class="checkbox-item">
+      <input type="checkbox" checked data-di="${m}" onchange="toggleDI('${m}',this.checked)">
+      <div class="checkbox-box"></div>
+      <span class="checkbox-text"><span class="di-badge ${cls}" style="padding:1px 5px;font-size:0.55rem">${m}</span></span>
+    </label>`;
+  }
+}
+
+function toggleDI(m, checked) {
+  if (checked) state.filters.diMovements.delete(m);
+  else state.filters.diMovements.add(m); // set = excluded
+}
+function initDateRange() {
+  const data=state.datasets[state.current]||[];
+  const dates=data.map(r=>r.orderDate).filter(Boolean);
+  if (dates.length) {
+    document.getElementById('f-date-from').value=fmtDateInput(new Date(Math.min(...dates)));
+    document.getElementById('f-date-to').value=fmtDateInput(new Date(Math.max(...dates)));
+  }
+}
+function fmtDateInput(d) { return d?d.toISOString().split('T')[0]:''; }
+
+function switchDataset(key) {
+  if (!state.datasets[key]) return;
+  state.current=key;
+  document.querySelectorAll('.dataset-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+key).classList.add('active');
+  buildStatusCheckboxes(); buildWhseCheckboxes(); initDateRange();
+  if (Object.keys(state.diLookup).length > 0) buildDICheckboxes();
+  applyFilters();
+}
+
+function resetFilters() {
+  ['f-date-from','f-date-to','f-supplier','f-product-group'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  state.filters.anomPrice=false; state.filters.anomLead=false;
+  state.filters.diMovements = new Set(); state.filters.productGroup = '';
+  state.filters.selectedWhses = new Set();
+  document.getElementById('toggle-anom-price').className='toggle';
+  document.getElementById('toggle-anom-lead').className='toggle';
+  document.querySelectorAll('#whse-checkboxes input[type=checkbox]').forEach(cb=>cb.checked=true);
+  document.querySelectorAll('#di-checkboxes input[type=checkbox]').forEach(cb=>cb.checked=true);
+  updateWhseCount();
+  buildStatusCheckboxes(); initDateRange(); applyFilters();
+}
+
+function toggleSwitch(key) {
+  const el=document.getElementById('toggle-'+key);
+  const isOn=el.classList.contains('on');
+  el.classList.toggle('on',!isOn);
+  if (key==='anom-price') state.filters.anomPrice=!isOn;
+  if (key==='anom-lead')  state.filters.anomLead=!isOn;
+}
+
+function applyFilters() {
+  const data=state.datasets[state.current]; if (!data) return;
+  const f=state.filters;
+  const dFrom=document.getElementById('f-date-from').value?new Date(document.getElementById('f-date-from').value):null;
+  const dTo=document.getElementById('f-date-to').value?new Date(document.getElementById('f-date-to').value+'T23:59:59'):null;
+  const suppS=document.getElementById('f-supplier').value.toLowerCase();
+  const pgFilter=(document.getElementById('f-product-group')||{}).value||'';
+
+  state.filtered=data.filter(r=>{
+    // Warehouse: selectedWhses holds EXCLUDED codes; empty set = all shown
+    if (f.selectedWhses.size>0 && f.selectedWhses.has(r.whse)) return false;
+    if (!f.statuses.has(r.status)) return false;
+    if (dFrom&&r.orderDate&&r.orderDate<dFrom) return false;
+    if (dTo&&r.orderDate&&r.orderDate>dTo) return false;
+    if (suppS&&!r.suppName.toLowerCase().includes(suppS)) return false;
+    if (f.anomPrice&&!r.anomalyTypes.includes('price')) return false;
+    if (f.anomLead&&!r.anomalyTypes.includes('lead')) return false;
+    if (f.diMovements.size>0 && f.diMovements.has(r.diMovement||'Not in DI')) return false;
+    if (pgFilter && (r.invPg||'') !== pgFilter) return false;
+    return true;
+  });
+  updateAll();
+}
+
+function updateAll() {
+  const d=state.filtered, n=d.length;
+  const totalVal=d.reduce((s,r)=>s+(r.ordValueUSD||0),0);
+  const ltRows=d.filter(r=>r.leadTime!==null&&r.leadTime>=0&&r.leadTime<365);
+  const avgLead=ltRows.length?ltRows.reduce((s,r)=>s+r.leadTime,0)/ltRows.length:0;
+  const suppliers=new Set(d.map(r=>r.suppName).filter(Boolean));
+  const items=new Set(d.map(r=>r.itemCode).filter(Boolean));
+  const anomCount=d.filter(r=>r.hasAnomaly).length;
+
+  document.getElementById('kpi-lines').textContent=fmtNum(n);
+  document.getElementById('kpi-value').textContent=fmtUSD(totalVal);
+  document.getElementById('kpi-lead').textContent=avgLead?avgLead.toFixed(1)+'d':'—';
+  document.getElementById('kpi-suppliers').textContent=fmtNum(suppliers.size);
+  document.getElementById('kpi-items').textContent=fmtNum(items.size);
+  document.getElementById('kpi-anomalies').textContent=fmtNum(anomCount);
+  document.getElementById('top-info').innerHTML=`<strong>${fmtNum(n)}</strong> rows displayed · ${fmtNum(state.datasets[state.current]?.length||0)} total`;
+  document.getElementById('nav-row-count').textContent=fmtNum(state.datasets[state.current]?.length||0);
+
+  renderTrendChart(); renderSupplierChart(); renderWhseChart();
+  renderLeadChart(); renderGapChart(); renderAnomalyTable();
+  renderItemsTable(); renderSupplierTable(); populateItemDropdown();
+  if (Object.keys(state.diLookup).length > 0) {
+    renderDIKPIs(); renderDISpendChart(); renderDICountChart();
+    renderDITrendChart(); renderDIRiskTable(); renderDIItemTable();
+  }
+  if (Object.keys(state.valLookup).length > 0) {
+    renderValKPIs(); renderValDIChart(); renderValWhseChart();
+    renderValTopItems(); renderValBreakdown(); renderValPGChart();
+    renderValCrossTable(); renderValTopTable();
+  }
+  if (Object.keys(state.txnStats).length > 0) {
+    renderTxnKPIs(); renderTxnTrendChart(); renderTxnTopChart();
+    renderTxnCoverageChart(); renderTxnVsInvChart();
+    renderTxnRiskTable(); renderTxnReplTable(); renderTxnMismatchTable();
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  CHART HELPERS
+// ════════════════════════════════════════════════════════
+function destroyChart(id) { if(state.charts[id]){state.charts[id].destroy();delete state.charts[id];} }
+
+function mcgChartOpts(yFmt) {
+  return {
+    responsive:true, maintainAspectRatio:false, animation:{duration:350},
+    plugins:{
+      legend:{labels:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:10},boxWidth:12,padding:10}},
+      tooltip:{
+        backgroundColor:'#FFFFFF',borderColor:'#DDD9D0',borderWidth:1,
+        titleColor:MCG.navy,bodyColor:MCG.muted,padding:10,
+        titleFont:{family:"'IBM Plex Sans'",size:11,weight:'600'},
+        bodyFont:{family:"'IBM Plex Sans'",size:10},
+        callbacks:{label:ctx=>` ${ctx.dataset.label}: ${yFmt(ctx.raw)}`}
+      }
+    },
+    scales:{
+      x:{ticks:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:9}},grid:{color:'#F0EDE8'}},
+      y:{ticks:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:9},callback:yFmt},grid:{color:'#F0EDE8'}}
+    }
+  };
+}
+
+function renderTrendChart() {
+  const view=document.getElementById('trend-view').value;
+  const data=state.filtered; if (!data.length) return;
+  const months={};
+  for (const r of data) {
+    const d=r.orderDate; if (!d) continue;
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!months[key]) months[key]={value:0,count:0};
+    months[key].value+=r.ordValueUSD; months[key].count++;
+  }
+  const sorted=Object.keys(months).sort();
+  const labels=sorted.map(k=>{const[y,m]=k.split('-');return`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]} ${y}`;});
+  const values=sorted.map(k=>view==='value'?months[k].value:months[k].count);
+  document.getElementById('trend-badge').textContent=`${sorted.length} months`;
+  destroyChart('trend');
+  const ctx=document.getElementById('chart-trend').getContext('2d');
+  state.charts.trend=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:view==='value'?'Ordered Value (USD)':'PO Lines',data:values,
+      backgroundColor:'rgba(196,153,58,0.18)',borderColor:MCG.gold,borderWidth:2,
+      hoverBackgroundColor:'rgba(196,153,58,0.35)'}]},
+    options:mcgChartOpts(v=>view==='value'?'$'+fmtNum(Math.round(v)):fmtNum(v))
+  });
+}
+
+function renderSupplierChart() {
+  const n=parseInt(document.getElementById('supplier-n').value)||10;
+  const data=state.filtered; if (!data.length) return;
+  const suppMap={};
+  for (const r of data) { if(!r.suppName) continue; if(!suppMap[r.suppName]) suppMap[r.suppName]=0; suppMap[r.suppName]+=r.ordValueUSD; }
+  const sorted=Object.entries(suppMap).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,n);
+  const labels=sorted.map(([k])=>k.length>24?k.slice(0,24)+'…':k);
+  const values=sorted.map(([,v])=>Math.abs(v));
+  destroyChart('suppliers');
+  const ctx=document.getElementById('chart-suppliers').getContext('2d');
+  state.charts.suppliers=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Total Value (USD)',data:values,
+      backgroundColor:CHART_COLORS.map(c=>c+'28'),
+      borderColor:CHART_COLORS,borderWidth:1.5}]},
+    options:{...mcgChartOpts(v=>'$'+fmtNum(Math.round(v))),indexAxis:'y'}
+  });
+}
+
+function renderWhseChart() {
+  const data=state.filtered; if (!data.length) return;
+  const whseMap={};
+  for (const r of data){const w=r.whse||'UNK';if(!whseMap[w])whseMap[w]=0;whseMap[w]+=Math.abs(r.ordValueUSD);}
+  const sorted=Object.entries(whseMap).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const total=sorted.reduce((s,[,v])=>s+v,0);
+  document.getElementById('whse-badge').textContent=`${sorted.length} warehouses`;
+  destroyChart('whse');
+  const ctx=document.getElementById('chart-whse').getContext('2d');
+  state.charts.whse=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:sorted.map(([k])=>k),
+      datasets:[{data:sorted.map(([,v])=>v),
+        backgroundColor:CHART_COLORS.map(c=>c+'CC'),
+        borderColor:'#FFFFFF',borderWidth:2,hoverBorderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'right',labels:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:10},boxWidth:12,padding:8}},
+        tooltip:{backgroundColor:'#FFF',borderColor:'#DDD9D0',borderWidth:1,
+          titleColor:MCG.navy,bodyColor:MCG.muted,
+          titleFont:{family:"'IBM Plex Sans'",size:11,weight:'600'},
+          bodyFont:{family:"'IBM Plex Sans'",size:10},
+          callbacks:{label:ctx=>` ${ctx.label}: $${fmtNum(Math.round(ctx.raw))} (${(ctx.raw/total*100).toFixed(1)}%)`}
+        }
+      }
+    }
+  });
+}
+
+function renderLeadChart() {
+  const data=state.filtered;
+  const ltData=data.map(r=>r.leadTime).filter(v=>v!==null&&v>=0&&v<180);
+  if (!ltData.length) return;
+  const buckets=[0,1,3,7,14,21,30,45,60,90,120,180];
+  const counts=new Array(buckets.length-1).fill(0);
+  for (const v of ltData) for (let i=0;i<buckets.length-1;i++) if(v>=buckets[i]&&v<buckets[i+1]){counts[i]++;break;}
+  const labels=buckets.slice(0,-1).map((b,i)=>`${b}–${buckets[i+1]}d`);
+  const avg=ltData.reduce((a,b)=>a+b,0)/ltData.length;
+  document.getElementById('lead-badge').textContent=`avg ${avg.toFixed(1)} days`;
+  destroyChart('lead');
+  const ctx=document.getElementById('chart-lead').getContext('2d');
+  state.charts.lead=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'PO Count',data:counts,
+      backgroundColor:counts.map((c,i)=>i>=6?'rgba(179,48,48,0.25)':'rgba(27,46,92,0.18)'),
+      borderColor:counts.map((c,i)=>i>=6?MCG.danger:MCG.navy),borderWidth:1.5}]},
+    options:mcgChartOpts(v=>fmtNum(v))
+  });
+}
+
+function renderGapChart() {
+  const data=state.filtered; if (!data.length) return;
+  const months={};
+  for (const r of data){
+    if (!r.orderDate) continue;
+    const key=`${r.orderDate.getFullYear()}-${String(r.orderDate.getMonth()+1).padStart(2,'0')}`;
+    if (!months[key]) months[key]={orderVal:0,recvVal:0};
+    months[key].orderVal+=r.ordValueUSD;
+    months[key].recvVal+=r.recvDate?r.ordValueUSD:0;
+  }
+  const sorted=Object.keys(months).sort().slice(-12);
+  const labels=sorted.map(k=>{const[y,m]=k.split('-');return`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]}`;});
+  destroyChart('gap');
+  const ctx=document.getElementById('chart-gap').getContext('2d');
+  state.charts.gap=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Ordered',data:sorted.map(k=>months[k].orderVal),borderColor:MCG.navy,backgroundColor:'rgba(27,46,92,0.08)',tension:0.4,fill:true,pointRadius:3,pointBackgroundColor:MCG.navy},
+      {label:'Received',data:sorted.map(k=>months[k].recvVal),borderColor:MCG.gold,backgroundColor:'rgba(196,153,58,0.08)',tension:0.4,fill:true,pointRadius:3,pointBackgroundColor:MCG.gold}
+    ]},
+    options:mcgChartOpts(v=>'$'+fmtNum(Math.round(v)))
+  });
+}
+
+function populateItemDropdown() {
+  const search=(document.getElementById('item-search').value||'').toLowerCase();
+  const items={};
+  for (const r of state.filtered){if(!r.itemCode) continue;if(!items[r.itemCode])items[r.itemCode]=r.itemDesc||r.itemCode;}
+  const sel=document.getElementById('item-select');
+  const prev=sel.value;
+  sel.innerHTML='<option value="">Select item…</option>';
+  const keys=Object.keys(items).filter(k=>!search||k.toLowerCase().includes(search)||(items[k]||'').toLowerCase().includes(search));
+  for (const k of keys.slice(0,50)) sel.innerHTML+=`<option value="${k}">${k} – ${(items[k]||'').slice(0,35)}</option>`;
+  if (prev&&keys.includes(prev)) sel.value=prev;
+}
+function searchItems(){populateItemDropdown();renderPriceChart();}
+
+function renderPriceChart() {
+  const itemCode=document.getElementById('item-select').value;
+  destroyChart('price'); if (!itemCode) return;
+  const rows=state.filtered.filter(r=>r.itemCode===itemCode&&r.unitPrice!==null&&r.orderDate).sort((a,b)=>a.orderDate-b.orderDate);
+  if (!rows.length) return;
+  const prices=rows.map(r=>Math.abs(r.unitPrice));
+  const avg=prices.reduce((a,b)=>a+b,0)/prices.length;
+  const std=Math.sqrt(prices.reduce((a,b)=>a+(b-avg)**2,0)/prices.length);
+  const anomIdx=prices.map((p,i)=>Math.abs(p-avg)/std>2.5?i:-1).filter(i=>i>=0);
+  document.getElementById('item-stats').textContent=`avg: $${fmtUSD(avg)} · σ: $${fmtUSD(std)} · ${rows.length} orders`;
+  document.getElementById('price-anom-badge').textContent=`${anomIdx.length} price anomalies`;
+  const pColors=prices.map((p,i)=>anomIdx.includes(i)?MCG.danger:MCG.navy);
+  const pSizes=prices.map((p,i)=>anomIdx.includes(i)?8:3);
+  const ctx=document.getElementById('chart-price').getContext('2d');
+  state.charts.price=new Chart(ctx,{
+    type:'line',
+    data:{labels:rows.map(r=>fmtDateShort(r.orderDate)),datasets:[
+      {label:'Unit Price (USD)',data:prices,borderColor:MCG.navy,backgroundColor:'rgba(27,46,92,0.06)',tension:0.3,fill:true,pointBackgroundColor:pColors,pointRadius:pSizes,pointHoverRadius:6},
+      {label:`Avg ($${fmtUSD(avg)})`,data:prices.map(()=>avg),borderColor:MCG.gold,borderDash:[6,4],borderWidth:1.5,pointRadius:0,fill:false},
+      {label:'+2.5σ',data:prices.map(()=>avg+2.5*std),borderColor:MCG.danger+'99',borderDash:[3,4],borderWidth:1,pointRadius:0,fill:false},
+      {label:'-2.5σ',data:prices.map(()=>Math.max(0,avg-2.5*std)),borderColor:MCG.danger+'99',borderDash:[3,4],borderWidth:1,pointRadius:0,fill:false}
+    ]},
+    options:mcgChartOpts(v=>'$'+fmtUSD(v))
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  TABLES
+// ════════════════════════════════════════════════════════
+function renderAnomalyTable(){
+  const typeFilter=document.getElementById('anom-filter').value;
+  let anoms=state.filtered.filter(r=>r.hasAnomaly);
+  if (typeFilter) anoms=anoms.filter(r=>r.anomalyTypes.includes(typeFilter));
+  state.anomalies=anoms; state.anomPage=0;
+  document.getElementById('anom-count-badge').textContent=`${fmtNum(anoms.length)} anomalies`;
+  renderAnomalyPage();
+}
+
+function renderAnomalyPage(){
+  const anoms=state.anomalies, PAGE=state.ANOM_PAGE_SIZE;
+  const page=anoms.slice(state.anomPage*PAGE,(state.anomPage+1)*PAGE);
+  let html='';
+  for (const r of page){
+    const types=r.anomalyTypes.map(t=>`<span class="tag tag-${t}">${t}</span>`).join(' ');
+    const zs=r.priceZScore!=null?r.priceZScore.toFixed(2):r.leadZScore!=null?r.leadZScore.toFixed(2):r.qtyZScore!=null?r.qtyZScore.toFixed(2):'—';
+    const zColor=Math.abs(parseFloat(zs))>3?MCG.danger:MCG.copper;
+    html+=`<tr class="anomaly-row">
+      <td>${types}</td>
+      <td style="font-family:var(--mono);color:var(--text-mid)">${r.orderNo||'—'}</td>
+      <td style="font-family:var(--mono);color:${MCG.navy};font-weight:600">${r.itemCode||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${(r.itemDesc||'').trim()}</td>
+      <td>${r.suppName||'—'}</td>
+      <td><span style="font-family:var(--display);font-size:0.65rem;font-weight:600;color:${MCG.navy}">${r.whse}</span></td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="font-family:var(--mono)">${r.orderDate?fmtDateShort(r.orderDate):'—'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(r.ordQty)}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(Math.abs(r.ordValueUSD))}</td>
+      <td style="text-align:right;font-family:var(--mono);color:${r.anomalyTypes.includes('price')?MCG.danger:'inherit'}">${r.unitPrice!=null?'$'+fmtUSD(Math.abs(r.unitPrice)):'—'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${r.itemAvgPrice!=null?'$'+fmtUSD(r.itemAvgPrice):'—'}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600;color:${zColor}">${zs}σ</td>
+    </tr>`;
+  }
+  document.getElementById('anomaly-tbody').innerHTML=html||'<tr><td colspan="13" class="no-data">No anomalies detected with current filters</td></tr>';
+  const total=Math.ceil(anoms.length/PAGE);
+  let pages='';
+  if (total>1){
+    pages+=`<button class="page-btn" onclick="anomPage(${state.anomPage-1})" ${state.anomPage===0?'disabled':''}>‹</button>`;
+    const s=Math.max(0,state.anomPage-2),e=Math.min(total-1,state.anomPage+2);
+    for(let i=s;i<=e;i++) pages+=`<button class="page-btn ${i===state.anomPage?'active':''}" onclick="anomPage(${i})">${i+1}</button>`;
+    pages+=`<button class="page-btn" onclick="anomPage(${state.anomPage+1})" ${state.anomPage>=total-1?'disabled':''}>›</button>`;
+    pages+=`<span>of ${total} pages</span>`;
+  }
+  document.getElementById('anom-pagination').innerHTML=pages;
+}
+function anomPage(p){if(p<0||p>=Math.ceil(state.anomalies.length/state.ANOM_PAGE_SIZE))return;state.anomPage=p;renderAnomalyPage();}
+
+function renderItemsTable(){
+  const sortBy=document.getElementById('items-sort').value;
+  const itemMap={};
+  for (const r of state.filtered){
+    if (!r.itemCode) continue;
+    if (!itemMap[r.itemCode]) itemMap[r.itemCode]={code:r.itemCode,desc:r.itemDesc,count:0,qty:0,value:0,prices:[]};
+    const m=itemMap[r.itemCode];
+    m.count++; m.qty+=r.ordQty; m.value+=r.ordValueUSD;
+    if (r.unitPrice) m.prices.push({date:r.orderDate,price:Math.abs(r.unitPrice)});
+  }
+  let sorted=Object.values(itemMap).sort((a,b)=>{
+    if(sortBy==='value') return Math.abs(b.value)-Math.abs(a.value);
+    if(sortBy==='count') return b.count-a.count;
+    return Math.abs(b.qty)-Math.abs(a.qty);
+  }).slice(0,30);
+  let html='';
+  sorted.forEach((m,i)=>{
+    const avgPrice=m.prices.length?m.prices.reduce((s,p)=>s+p.price,0)/m.prices.length:0;
+    const trend=getPriceTrend(m.prices);
+    const cat=getCat(m.code);
+    html+=`<tr>
+      <td style="color:${MCG.muted};font-weight:600">${i+1}</td>
+      <td style="font-family:var(--mono);color:${MCG.navy};font-weight:600">${m.code}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${(m.desc||'').trim()}</td>
+      <td><span style="font-family:var(--display);font-size:0.6rem;background:rgba(27,46,92,0.08);color:${MCG.navy};padding:2px 7px;border-radius:2px;font-weight:600;letter-spacing:0.06em">${cat}</span></td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(m.count)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(Math.abs(m.qty))}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600">$${fmtNum(Math.round(Math.abs(m.value)))}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(avgPrice)}</td>
+      <td style="text-align:center;font-size:1rem">${trend}</td>
+    </tr>`;
+  });
+  document.getElementById('items-tbody').innerHTML=html||'<tr><td colspan="9" class="no-data">No data</td></tr>';
+}
+
+function getPriceTrend(prices){
+  if(prices.length<3) return '<span style="color:#CBD5E1">–</span>';
+  const s=prices.filter(p=>p.date).sort((a,b)=>a.date-b.date);
+  const half=Math.floor(s.length/2);
+  const first=s.slice(0,half).reduce((a,p)=>a+p.price,0)/half;
+  const last=s.slice(half).reduce((a,p)=>a+p.price,0)/(s.length-half);
+  const pct=(last-first)/first;
+  if(pct>0.1) return `<span style="color:${MCG.danger};font-size:1.1rem">↑</span>`;
+  if(pct<-0.1) return `<span style="color:${MCG.success};font-size:1.1rem">↓</span>`;
+  return `<span style="color:${MCG.muted};font-size:1.1rem">→</span>`;
+}
+
+function getCat(code){
+  if(!code) return '—';
+  if(code.startsWith('5')) return 'PARTS';
+  if(code.startsWith('6')) return 'CONSUMABLE';
+  if(code.startsWith('7')) return 'EQUIPMENT';
+  if(code.startsWith('1')) return 'RAW MAT';
+  return 'OTHER';
+}
+
+function renderSupplierTable(){
+  const suppMap={};
+  for (const r of state.filtered){
+    if (!r.suppName) continue;
+    if (!suppMap[r.suppName]) suppMap[r.suppName]={name:r.suppName,count:0,value:0,leadTimes:[],whses:{},anomalies:0};
+    const s=suppMap[r.suppName];
+    s.count++; s.value+=r.ordValueUSD;
+    if(r.leadTime!==null&&r.leadTime>=0&&r.leadTime<365) s.leadTimes.push(r.leadTime);
+    if(r.whse) s.whses[r.whse]=(s.whses[r.whse]||0)+1;
+    if(r.hasAnomaly) s.anomalies++;
+  }
+  const sorted=Object.values(suppMap).sort((a,b)=>Math.abs(b.value)-Math.abs(a.value)).slice(0,25);
+  let html='';
+  sorted.forEach((s,i)=>{
+    const avgLt=s.leadTimes.length?s.leadTimes.reduce((a,b)=>a+b,0)/s.leadTimes.length:null;
+    const minLt=s.leadTimes.length?Math.min(...s.leadTimes):null;
+    const maxLt=s.leadTimes.length?Math.max(...s.leadTimes):null;
+    const topW=Object.entries(s.whses).sort((a,b)=>b[1]-a[1])[0];
+    html+=`<tr>
+      <td style="color:${MCG.muted};font-weight:600">${i+1}</td>
+      <td style="font-weight:500;color:${MCG.navy}">${s.name}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(s.count)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600">$${fmtNum(Math.round(Math.abs(s.value)))}</td>
+      <td style="text-align:right;font-family:var(--mono)">${avgLt!=null?avgLt.toFixed(1)+'d':'—'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${minLt!=null?minLt+'d':'—'}</td>
+      <td style="text-align:right;font-family:var(--mono);color:${maxLt>30?MCG.copper:'inherit'};font-weight:${maxLt>30?'600':'400'}">${maxLt!=null?maxLt+'d':'—'}</td>
+      <td style="text-align:center;font-family:var(--mono);font-weight:600;color:${s.anomalies>0?MCG.danger:MCG.muted}">${s.anomalies}</td>
+      <td>${topW?`<span style="font-family:var(--display);font-size:0.65rem;font-weight:600;color:${MCG.navy};background:rgba(27,46,92,0.08);padding:2px 7px;border-radius:2px;letter-spacing:0.04em">${topW[0]}</span>`:'—'}</td>
+    </tr>`;
+  });
+  document.getElementById('supplier-tbody').innerHTML=html||'<tr><td colspan="9" class="no-data">No data</td></tr>';
+}
+
+// ════════════════════════════════════════════════════════
+//  DI MOVEMENT ANALYSIS RENDERERS
+// ════════════════════════════════════════════════════════
+
+function renderDIKPIs() {
+  const d = state.filtered;
+  const deadRows     = d.filter(r=>r.diMovement==='Dead Stock');
+  const potentialRows= d.filter(r=>r.diMovement==='Potential Dead Stock');
+  const slowRows     = d.filter(r=>r.diMovement==='Slow Moving');
+  const fastRows     = d.filter(r=>r.diMovement==='Fast Moving');
+  const deadVal      = deadRows.reduce((s,r)=>s+Math.abs(r.ordValueUSD),0);
+  const potVal       = potentialRows.reduce((s,r)=>s+Math.abs(r.ordValueUSD),0);
+  const slowVal      = slowRows.reduce((s,r)=>s+Math.abs(r.ordValueUSD),0);
+  const unmatchedItems = new Set(d.filter(r=>r.diMovement==='Not in DI').map(r=>r.itemCode)).size;
+
+  document.getElementById('kpi-di-deadstock').textContent   = fmtNum(deadRows.length);
+  document.getElementById('kpi-di-deadstock-val').textContent= '$'+fmtUSD(deadVal);
+  document.getElementById('kpi-di-potential').textContent   = fmtNum(potentialRows.length);
+  document.getElementById('kpi-di-potential-val').textContent= '$'+fmtUSD(potVal);
+  document.getElementById('kpi-di-slow').textContent        = fmtNum(slowRows.length);
+  document.getElementById('kpi-di-slow-val').textContent    = '$'+fmtUSD(slowVal);
+  document.getElementById('kpi-di-fast').textContent        = fmtNum(fastRows.length);
+  document.getElementById('kpi-di-unmatched').textContent   = fmtNum(unmatchedItems);
+  document.getElementById('kpi-di-risk-val').textContent    = '$'+fmtUSD(deadVal+potVal);
+}
+
+const DI_COLORS = {
+  'Dead Stock':           '#B33030',
+  'Potential Dead Stock': '#C05010',
+  'Slow Moving':          '#C4993A',
+  'Insurance Item':       '#1E5FA8',
+  'Fast Moving':          '#2E7D52',
+  'Medium Moving':        '#148080',
+  'New Ansi':             '#6A3A8C',
+  'Critical':             '#1B2E5C',
+  'Unspecified':          '#7B8899',
+  'Not in DI':            '#C8D0DA',
+};
+
+function getDIByCategory(data) {
+  const map = {};
+  for (const r of data) {
+    const m = r.diMovement || 'Not in DI';
+    if (!map[m]) map[m] = { value:0, count:0 };
+    map[m].value += Math.abs(r.ordValueUSD);
+    map[m].count++;
+  }
+  return map;
+}
+
+function renderDISpendChart() {
+  const map = getDIByCategory(state.filtered);
+  const ORDER = ['Dead Stock','Potential Dead Stock','Slow Moving','Insurance Item',
+    'Fast Moving','Medium Moving','New Ansi','Critical','Unspecified','Not in DI'];
+  const labels=[], values=[], colors=[];
+  for (const cat of ORDER) {
+    if (!map[cat]) continue;
+    labels.push(cat); values.push(map[cat].value); colors.push(DI_COLORS[cat]||'#999');
+  }
+  const total = values.reduce((a,b)=>a+b,0);
+  document.getElementById('di-spend-badge').textContent = '$'+fmtUSD(total);
+  destroyChart('di-spend');
+  const ctx = document.getElementById('chart-di-spend').getContext('2d');
+  state.charts['di-spend'] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{
+      label:'Total Spend (USD)',
+      data: values,
+      backgroundColor: colors.map(c=>c+'33'),
+      borderColor: colors,
+      borderWidth: 2,
+    }]},
+    options:{
+      ...mcgChartOpts(v=>'$'+fmtUSD(v)),
+      indexAxis:'y',
+      plugins:{
+        ...mcgChartOpts(v=>'$'+fmtUSD(v)).plugins,
+        legend:{display:false},
+      }
+    }
+  });
+}
+
+function renderDICountChart() {
+  const map = getDIByCategory(state.filtered);
+  const ORDER = ['Dead Stock','Potential Dead Stock','Slow Moving','Insurance Item',
+    'Fast Moving','Medium Moving','New Ansi','Critical','Unspecified','Not in DI'];
+  const labels=[], values=[], colors=[];
+  for (const cat of ORDER) {
+    if (!map[cat]) continue;
+    labels.push(cat); values.push(map[cat].count); colors.push(DI_COLORS[cat]||'#999');
+  }
+  const total = values.reduce((a,b)=>a+b,0);
+  document.getElementById('di-count-badge').textContent = fmtNum(total)+' lines';
+  destroyChart('di-count');
+  const ctx = document.getElementById('chart-di-count').getContext('2d');
+  state.charts['di-count'] = new Chart(ctx, {
+    type: 'doughnut',
+    data:{ labels, datasets:[{
+      data: values,
+      backgroundColor: colors.map(c=>c+'CC'),
+      borderColor: '#FFFFFF',
+      borderWidth: 2,
+      hoverBorderWidth: 3,
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'right', labels:{ color:MCG.muted, font:{family:"'IBM Plex Sans'",size:10}, boxWidth:12, padding:7 }},
+        tooltip:{
+          backgroundColor:'#FFF', borderColor:'#DDD9D0', borderWidth:1,
+          titleColor:MCG.navy, bodyColor:MCG.muted,
+          titleFont:{family:"'IBM Plex Sans'",size:11,weight:'600'},
+          bodyFont:{family:"'IBM Plex Sans'",size:10},
+          callbacks:{ label: ctx=>`  ${ctx.label}: ${fmtNum(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)` }
+        }
+      }
+    }
+  });
+}
+
+function renderDITrendChart() {
+  const AT_RISK = ['Dead Stock','Potential Dead Stock','Slow Moving'];
+  const data = state.filtered.filter(r=>AT_RISK.includes(r.diMovement) && r.orderDate);
+  if (!data.length) { destroyChart('di-trend'); return; }
+
+  // Group by month per category
+  const months = {};
+  for (const r of data) {
+    const key=`${r.orderDate.getFullYear()}-${String(r.orderDate.getMonth()+1).padStart(2,'0')}`;
+    if (!months[key]) months[key] = {'Dead Stock':0,'Potential Dead Stock':0,'Slow Moving':0};
+    months[key][r.diMovement] = (months[key][r.diMovement]||0) + Math.abs(r.ordValueUSD);
+  }
+  const sorted = Object.keys(months).sort();
+  const labels = sorted.map(k=>{const[y,m]=k.split('-');return`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]} ${y}`;});
+
+  destroyChart('di-trend');
+  const ctx = document.getElementById('chart-di-trend').getContext('2d');
+  state.charts['di-trend'] = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'Dead Stock',           data:sorted.map(k=>months[k]['Dead Stock']||0),           borderColor:DI_COLORS['Dead Stock'],           backgroundColor:DI_COLORS['Dead Stock']+'18',           tension:0.4, fill:true, pointRadius:3 },
+      { label:'Potential Dead Stock', data:sorted.map(k=>months[k]['Potential Dead Stock']||0), borderColor:DI_COLORS['Potential Dead Stock'],  backgroundColor:DI_COLORS['Potential Dead Stock']+'18', tension:0.4, fill:false, pointRadius:3 },
+      { label:'Slow Moving',          data:sorted.map(k=>months[k]['Slow Moving']||0),          borderColor:DI_COLORS['Slow Moving'],           backgroundColor:DI_COLORS['Slow Moving']+'18',          tension:0.4, fill:false, pointRadius:3 },
+    ]},
+    options: mcgChartOpts(v=>'$'+fmtUSD(v))
+  });
+}
+
+// ── DI RISK TABLE ──────────────────────────────────────
+let diRiskRows = [];
+
+function renderDIRiskTable() {
+  const riskFilter = (document.getElementById('di-risk-filter')||{}).value || '';
+  const AT_RISK_LEVELS = ['critical','high','medium','low'];
+  diRiskRows = state.filtered
+    .filter(r => {
+      if (!AT_RISK_LEVELS.includes(r.diRisk)) return false;
+      if (riskFilter && r.diRisk !== riskFilter) return false;
+      return true;
+    })
+    .sort((a,b) => {
+      const order={critical:0,high:1,medium:2,low:3};
+      if (order[a.diRisk] !== order[b.diRisk]) return order[a.diRisk]-order[b.diRisk];
+      return Math.abs(b.ordValueUSD)-Math.abs(a.ordValueUSD);
+    });
+
+  state.diRiskPage = 0;
+  document.getElementById('di-risk-count-badge').textContent = fmtNum(diRiskRows.length)+' alerts';
+  renderDIRiskPage();
+}
+
+function renderDIRiskPage() {
+  const PAGE = state.DI_RISK_PAGE_SIZE;
+  const page = diRiskRows.slice(state.diRiskPage*PAGE, (state.diRiskPage+1)*PAGE);
+  const riskClass = {critical:'risk-critical',high:'risk-high',medium:'risk-medium',low:'risk-medium'};
+  let html = '';
+  for (const r of page) {
+    const icon  = RISK_ICONS[r.diRisk]||'';
+    const label = RISK_LABELS[r.diRisk]||'';
+    html += `<tr class="${riskClass[r.diRisk]||''}">
+      <td><span style="font-size:0.9rem">${icon}</span> <span style="font-family:var(--display);font-size:0.62rem;font-weight:700;color:${r.diRisk==='critical'?MCG.danger:r.diRisk==='high'?'#C05010':'#8A6010'}">${label}</span></td>
+      <td>${diBadge(r.diMovement)}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:${MCG.navy}">${r.itemCode||'—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${(r.itemDesc||'').trim()}</td>
+      <td>${r.suppName||'—'}</td>
+      <td><span style="font-family:var(--display);font-size:0.62rem;font-weight:600;color:${MCG.navy};background:rgba(27,46,92,0.08);padding:1px 6px;border-radius:2px">${r.whse}</span></td>
+      <td style="font-family:var(--mono)">${r.orderDate?fmtDateShort(r.orderDate):'—'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(Math.abs(r.ordQty))}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600">$${fmtUSD(Math.abs(r.ordValueUSD))}</td>
+    </tr>`;
+  }
+  document.getElementById('di-risk-tbody').innerHTML = html ||
+    '<tr><td colspan="9" class="no-data">No at-risk procurement records with current filters</td></tr>';
+
+  const total = Math.ceil(diRiskRows.length/PAGE);
+  let pages = '';
+  if (total > 1) {
+    pages += `<button class="page-btn" onclick="diRiskPage(${state.diRiskPage-1})" ${state.diRiskPage===0?'disabled':''}>‹</button>`;
+    const s=Math.max(0,state.diRiskPage-2), e=Math.min(total-1,state.diRiskPage+2);
+    for(let i=s;i<=e;i++) pages+=`<button class="page-btn ${i===state.diRiskPage?'active':''}" onclick="diRiskPage(${i})">${i+1}</button>`;
+    pages+=`<button class="page-btn" onclick="diRiskPage(${state.diRiskPage+1})" ${state.diRiskPage>=total-1?'disabled':''}>›</button>`;
+    pages+=`<span>of ${total} pages</span>`;
+  }
+  document.getElementById('di-risk-pagination').innerHTML = pages;
+}
+
+function diRiskPage(p) {
+  if (p<0||p>=Math.ceil(diRiskRows.length/state.DI_RISK_PAGE_SIZE)) return;
+  state.diRiskPage=p; renderDIRiskPage();
+}
+
+// ── DI ITEM TABLE ──────────────────────────────────────
+function renderDIItemTable() {
+  const catFilter = (document.getElementById('di-item-cat-filter')||{}).value || '';
+  const itemMap = {};
+  for (const r of state.filtered) {
+    if (!r.itemCode) continue;
+    const m = r.diMovement || 'Not in DI';
+    if (catFilter && m !== catFilter) continue;
+    if (!itemMap[r.itemCode]) itemMap[r.itemCode] = {
+      code:r.itemCode, desc:r.itemDesc, movement:m, diCode:r.diCode||'',
+      count:0, qty:0, value:0, prices:[]
+    };
+    const x = itemMap[r.itemCode];
+    x.count++; x.qty+=Math.abs(r.ordQty||0); x.value+=Math.abs(r.ordValueUSD);
+    if (r.unitPrice) x.prices.push(r.unitPrice);
+  }
+
+  const sorted = Object.values(itemMap).sort((a,b)=>{
+    // Sort by risk priority first, then value
+    const riskOrder = {critical:0,high:1,medium:2,low:3,none:4};
+    const ra = riskOrder[getDIRisk(a.movement)]??4;
+    const rb = riskOrder[getDIRisk(b.movement)]??4;
+    if (ra!==rb) return ra-rb;
+    return b.value-a.value;
+  }).slice(0,50);
+
+  let html = '';
+  sorted.forEach((m,i)=>{
+    const avgPrice = m.prices.length?m.prices.reduce((a,b)=>a+b,0)/m.prices.length:0;
+    const risk = getDIRisk(m.movement);
+    const riskClass = {critical:'risk-critical',high:'risk-high',medium:'risk-medium',low:''};
+    let riskFlag = '';
+    if (risk==='critical') riskFlag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:${MCG.danger};background:rgba(179,48,48,0.1);padding:2px 7px;border-radius:2px">🔴 DEAD STOCK PURCHASE</span>`;
+    else if (risk==='high') riskFlag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:#C05010;background:rgba(208,90,26,0.1);padding:2px 7px;border-radius:2px">🟠 POTENTIAL DS</span>`;
+    else if (risk==='medium') riskFlag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:#8A6010;background:rgba(196,153,58,0.1);padding:2px 7px;border-radius:2px">🟡 SLOW MOVING</span>`;
+    else if (risk==='low') riskFlag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:${MCG.info};background:rgba(30,95,168,0.1);padding:2px 7px;border-radius:2px">🔵 INSURANCE</span>`;
+    html += `<tr class="${riskClass[risk]||''}">
+      <td style="color:${MCG.muted};font-weight:600">${i+1}</td>
+      <td style="font-family:var(--mono);color:${MCG.navy};font-weight:600">${m.code}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${(m.desc||'').trim()}</td>
+      <td>${diBadge(m.movement)}</td>
+      <td style="font-family:var(--mono);font-size:0.65rem;color:${MCG.muted}">${m.diCode||'—'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(m.count)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(m.qty)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600">$${fmtUSD(m.value)}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(avgPrice)}</td>
+      <td>${riskFlag}</td>
+    </tr>`;
+  });
+  document.getElementById('di-item-tbody').innerHTML = html ||
+    '<tr><td colspan="10" class="no-data">No items match the selected category filter</td></tr>';
+}
+
+// ════════════════════════════════════════════════════════
+//  INVENTORY VALUATION RENDERERS
+// ════════════════════════════════════════════════════════
+
+// Build a full inventory snapshot from valLookup, optionally filtered
+// by the currently active PO item set (to enable cross-analysis)
+function getValSnapshot(movFilter) {
+  // Full valuation — not filtered by PO, so shows all inventory
+  const rows = [];
+  const diLookup = state.diLookup;
+  for (const [code, records] of Object.entries(state.valLookup)) {
+    const di = diLookup[code];
+    const movement = di ? di.movement.trim() : 'Not in DI';
+    const mvCode   = di ? di.code.trim() : '';
+    if (movFilter && movement !== movFilter) continue;
+    for (const rec of records) {
+      rows.push({ code, movement, mvCode, ...rec });
+    }
+  }
+  return rows;
+}
+
+function renderValKPIs() {
+  const snap = getValSnapshot();
+  const totalVal = snap.reduce((s,r)=>s+r.onHandVal,0);
+  const byMov = {};
+  for (const r of snap) {
+    if (!byMov[r.movement]) byMov[r.movement]={val:0,count:0};
+    byMov[r.movement].val   += r.onHandVal;
+    byMov[r.movement].count++;
+  }
+  const deadVal = (byMov['Dead Stock']?.val||0);
+  const potVal  = (byMov['Potential Dead Stock']?.val||0);
+  const slowVal = (byMov['Slow Moving']?.val||0);
+  const atRisk  = deadVal + potVal + slowVal;
+  const whses   = new Set(snap.map(r=>r.whseCode).filter(Boolean));
+
+  const pct = v => totalVal>0 ? `${(v/totalVal*100).toFixed(1)}% of total` : '—';
+
+  document.getElementById('kpi-val-total').textContent      = '$'+fmtUSD(totalVal);
+  document.getElementById('kpi-val-items').textContent      = fmtNum(new Set(snap.map(r=>r.code)).size)+' items';
+  document.getElementById('kpi-val-dead').textContent       = '$'+fmtUSD(deadVal);
+  document.getElementById('kpi-val-dead-pct').textContent   = pct(deadVal);
+  document.getElementById('kpi-val-potential').textContent  = '$'+fmtUSD(potVal);
+  document.getElementById('kpi-val-potential-pct').textContent = pct(potVal);
+  document.getElementById('kpi-val-slow').textContent       = '$'+fmtUSD(slowVal);
+  document.getElementById('kpi-val-slow-pct').textContent   = pct(slowVal);
+  document.getElementById('kpi-val-atrisk').textContent     = '$'+fmtUSD(atRisk);
+  document.getElementById('kpi-val-whse').textContent       = fmtNum(whses.size);
+}
+
+function renderValDIChart() {
+  const snap = getValSnapshot();
+  const ORDER = ['Dead Stock','Potential Dead Stock','Slow Moving','Insurance Item',
+    'Fast Moving','Medium Moving','New Ansi','Critical','Unspecified','Not in DI'];
+  const map = {};
+  for (const r of snap) {
+    if (!map[r.movement]) map[r.movement]=0;
+    map[r.movement] += r.onHandVal;
+  }
+  const labels=[], values=[], colors=[];
+  for (const cat of ORDER) {
+    if (!map[cat]) continue;
+    labels.push(cat); values.push(map[cat]); colors.push(DI_COLORS[cat]||'#999');
+  }
+  const total = values.reduce((a,b)=>a+b,0);
+  document.getElementById('val-di-badge').textContent = '$'+fmtUSD(total);
+  destroyChart('val-di');
+  const ctx = document.getElementById('chart-val-di').getContext('2d');
+  state.charts['val-di'] = new Chart(ctx, {
+    type:'bar', indexAxis:'y',
+    data:{labels, datasets:[{
+      label:'On Hand Value (USD)', data:values,
+      backgroundColor:colors.map(c=>c+'28'), borderColor:colors, borderWidth:2,
+    }]},
+    options:{...mcgChartOpts(v=>'$'+fmtUSD(v)), plugins:{...mcgChartOpts(v=>'$'+fmtUSD(v)).plugins, legend:{display:false}}}
+  });
+}
+
+function renderValWhseChart() {
+  const snap = getValSnapshot();
+  const map = {};
+  for (const r of snap) {
+    const k = r.whseCode||'UNK';
+    if (!map[k]) map[k]=0;
+    map[k] += r.onHandVal;
+  }
+  const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const total = sorted.reduce((s,[,v])=>s+v,0);
+  document.getElementById('val-whse-badge').textContent = sorted.length+' warehouses';
+  destroyChart('val-whse');
+  const ctx = document.getElementById('chart-val-whse').getContext('2d');
+  state.charts['val-whse'] = new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels: sorted.map(([k])=>k),
+      datasets:[{ data:sorted.map(([,v])=>v), backgroundColor:CHART_COLORS.map(c=>c+'CC'), borderColor:'#FFF', borderWidth:2 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'right', labels:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:10},boxWidth:12,padding:7}},
+        tooltip:{
+          backgroundColor:'#FFF', borderColor:'#DDD9D0', borderWidth:1,
+          titleColor:MCG.navy, bodyColor:MCG.muted,
+          titleFont:{family:"'IBM Plex Sans'",size:11,weight:'600'},
+          bodyFont:{family:"'IBM Plex Sans'",size:10},
+          callbacks:{label:ctx=>`  ${ctx.label}: $${fmtUSD(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`}
+        }
+      }
+    }
+  });
+}
+
+function renderValTopItems() {
+  const movFilter = (document.getElementById('val-top-filter')||{}).value||'';
+  const snap = getValSnapshot(movFilter||undefined);
+  // Aggregate by item code
+  const map = {};
+  for (const r of snap) {
+    if (!map[r.code]) map[r.code] = {code:r.code, desc:r.desc, movement:r.movement, val:0, qty:0};
+    map[r.code].val += r.onHandVal;
+    map[r.code].qty += r.qtyOnHand;
+  }
+  const sorted = Object.values(map).sort((a,b)=>b.val-a.val).slice(0,20);
+  const labels  = sorted.map(x=>x.code.length>16?x.code.slice(0,16)+'…':x.code);
+  const values  = sorted.map(x=>x.val);
+  const bgColors = sorted.map(x=>(DI_COLORS[x.movement]||MCG.navy)+'44');
+  const bdColors = sorted.map(x=>(DI_COLORS[x.movement]||MCG.navy));
+
+  destroyChart('val-top');
+  const ctx = document.getElementById('chart-val-top').getContext('2d');
+  state.charts['val-top'] = new Chart(ctx, {
+    type:'bar',
+    data:{labels, datasets:[{label:'On Hand Value (USD)', data:values, backgroundColor:bgColors, borderColor:bdColors, borderWidth:1.5}]},
+    options:{
+      ...mcgChartOpts(v=>'$'+fmtUSD(v)),
+      plugins:{...mcgChartOpts(v=>'$'+fmtUSD(v)).plugins, legend:{display:false}},
+      scales:{
+        x:{ticks:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:8},maxRotation:45},grid:{color:'#F0EDE8'}},
+        y:{ticks:{color:MCG.muted,font:{family:"'IBM Plex Sans'",size:9},callback:v=>'$'+fmtUSD(v)},grid:{color:'#F0EDE8'}}
+      }
+    }
+  });
+}
+
+function renderValBreakdown() {
+  const snap = getValSnapshot();
+  const total = snap.reduce((s,r)=>s+r.onHandVal,0);
+  if (!total) return;
+  const ORDER = [
+    {label:'Dead Stock',           color:DI_COLORS['Dead Stock']},
+    {label:'Potential Dead Stock', color:DI_COLORS['Potential Dead Stock']},
+    {label:'Slow Moving',          color:DI_COLORS['Slow Moving']},
+    {label:'Insurance Item',       color:DI_COLORS['Insurance Item']},
+    {label:'Fast Moving',          color:DI_COLORS['Fast Moving']},
+    {label:'Medium Moving',        color:DI_COLORS['Medium Moving']},
+    {label:'Critical',             color:DI_COLORS['Critical']},
+    {label:'Not in DI',            color:DI_COLORS['Not in DI']},
+  ];
+  const map = {};
+  for (const r of snap) { map[r.movement]=(map[r.movement]||0)+r.onHandVal; }
+
+  let html = '';
+  for (const {label,color} of ORDER) {
+    const v = map[label]||0; if (!v) continue;
+    const pct = Math.min(100,(v/total*100));
+    html += `<div class="bar-row">
+      <div class="bar-label" style="font-family:var(--display);font-size:0.65rem;color:var(--text-mid)">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
+      <div class="bar-val">$${fmtUSD(v)} <span style="color:var(--text-light)">(${pct.toFixed(1)}%)</span></div>
+    </div>`;
+  }
+  document.getElementById('val-breakdown-bars').innerHTML = html;
+}
+
+function renderValPGChart() {
+  const snap = getValSnapshot();
+  const map = {};
+  for (const r of snap) {
+    const k = r.pg||'Other';
+    if (!map[k]) map[k]=0;
+    map[k] += r.onHandVal;
+  }
+  const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  destroyChart('val-pg');
+  const ctx = document.getElementById('chart-val-pg').getContext('2d');
+  state.charts['val-pg'] = new Chart(ctx, {
+    type:'bar', indexAxis:'y',
+    data:{
+      labels:sorted.map(([k])=>k.length>30?k.slice(0,30)+'…':k),
+      datasets:[{label:'Inventory Value (USD)', data:sorted.map(([,v])=>v),
+        backgroundColor:CHART_COLORS.map(c=>c+'33'), borderColor:CHART_COLORS, borderWidth:1.5}]
+    },
+    options:{...mcgChartOpts(v=>'$'+fmtUSD(v)), plugins:{...mcgChartOpts(v=>'$'+fmtUSD(v)).plugins, legend:{display:false}}}
+  });
+}
+
+// Cross-analysis: PO items that also have existing inventory
+function renderValCrossTable() {
+  const classFilter = (document.getElementById('val-cross-filter')||{}).value||'';
+  // Build item PO map from filtered PO rows
+  const poMap = {};
+  for (const r of state.filtered) {
+    if (!r.itemCode) continue;
+    if (!poMap[r.itemCode]) poMap[r.itemCode] = {count:0, spend:0, lastDate:null};
+    poMap[r.itemCode].count++;
+    poMap[r.itemCode].spend += Math.abs(r.ordValueUSD);
+    if (!poMap[r.itemCode].lastDate || r.orderDate > poMap[r.itemCode].lastDate)
+      poMap[r.itemCode].lastDate = r.orderDate;
+  }
+  // Find items with BOTH inventory AND PO activity
+  const rows = [];
+  for (const [code, po] of Object.entries(poMap)) {
+    const invRecs = state.valLookup[code];
+    if (!invRecs || invRecs.length === 0) continue;
+    const totalInvVal = invRecs.reduce((s,r)=>s+r.onHandVal,0);
+    const totalInvQty = invRecs.reduce((s,r)=>s+r.qtyOnHand,0);
+    if (totalInvVal <= 0) continue;
+    const di = state.diLookup[code];
+    const movement = di ? di.movement.trim() : 'Not in DI';
+    if (classFilter && movement !== classFilter) continue;
+    const rec0 = invRecs[0];
+    rows.push({
+      code, movement, pg:rec0.pg, whseCode:rec0.whseCode,
+      desc:rec0.desc, avgCost:rec0.avgCost,
+      invQty:totalInvQty, invVal:totalInvVal,
+      poCount:po.count, poSpend:po.spend, lastDate:po.lastDate
+    });
+  }
+  rows.sort((a,b) => {
+    // Prioritise by risk of movement, then inventory value
+    const riskOrder={critical:0,high:1,medium:2,low:3,none:4};
+    const ra=riskOrder[getDIRisk(a.movement)]??4, rb=riskOrder[getDIRisk(b.movement)]??4;
+    if (ra!==rb) return ra-rb;
+    return b.invVal-a.invVal;
+  });
+  state.valCrossRows = rows;
+  state.valCrossPage = 0;
+  document.getElementById('val-cross-count-badge').textContent = fmtNum(rows.length)+' items';
+  renderValCrossPage();
+}
+
+function renderValCrossPage() {
+  const PAGE = state.VAL_CROSS_PAGE_SIZE;
+  const page = state.valCrossRows.slice(state.valCrossPage*PAGE, (state.valCrossPage+1)*PAGE);
+  const riskCls = {critical:'risk-critical',high:'risk-high',medium:'risk-medium'};
+  let html = '';
+  for (const r of page) {
+    const risk = getDIRisk(r.movement);
+    let flag = '';
+    if (risk==='critical') flag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:${MCG.danger}">🔴 DEAD STOCK + STOCK EXISTS</span>`;
+    else if (risk==='high') flag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:#C05010">🟠 POTENTIAL DS</span>`;
+    else if (risk==='medium') flag=`<span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:#8A6010">🟡 SLOW + HAS STOCK</span>`;
+    else flag=`<span style="color:var(--text-light);font-family:var(--display);font-size:0.6rem">Has inventory</span>`;
+    html += `<tr class="${riskCls[risk]||''}">
+      <td>${diBadge(r.movement)}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:${MCG.navy}">${r.code}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${(r.desc||'').trim()}</td>
+      <td style="font-family:var(--sans);font-size:0.68rem">${r.pg||'—'}</td>
+      <td><span style="font-family:var(--display);font-size:0.62rem;font-weight:600;color:${MCG.navy};background:rgba(27,46,92,0.08);padding:1px 6px;border-radius:2px">${r.whseCode||'—'}</span></td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(r.invQty)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600;color:${risk==='critical'?MCG.danger:risk==='high'?'#C05010':'inherit'}">$${fmtUSD(r.invVal)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(r.poCount)}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(r.poSpend)}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(r.avgCost)}</td>
+      <td>${flag}</td>
+    </tr>`;
+  }
+  document.getElementById('val-cross-tbody').innerHTML = html ||
+    '<tr><td colspan="11" class="no-data">No items match — items with both inventory and PO activity appear here</td></tr>';
+  const total = Math.ceil(state.valCrossRows.length/PAGE);
+  let pages = '';
+  if (total>1) {
+    pages+=`<button class="page-btn" onclick="valCrossPage(${state.valCrossPage-1})" ${state.valCrossPage===0?'disabled':''}>‹</button>`;
+    const s=Math.max(0,state.valCrossPage-2),e=Math.min(total-1,state.valCrossPage+2);
+    for(let i=s;i<=e;i++) pages+=`<button class="page-btn ${i===state.valCrossPage?'active':''}" onclick="valCrossPage(${i})">${i+1}</button>`;
+    pages+=`<button class="page-btn" onclick="valCrossPage(${state.valCrossPage+1})" ${state.valCrossPage>=total-1?'disabled':''}>›</button>`;
+    pages+=`<span>of ${total} pages</span>`;
+  }
+  document.getElementById('val-cross-pagination').innerHTML = pages;
+}
+function valCrossPage(p) {
+  if(p<0||p>=Math.ceil(state.valCrossRows.length/state.VAL_CROSS_PAGE_SIZE)) return;
+  state.valCrossPage=p; renderValCrossPage();
+}
+
+function renderValTopTable() {
+  const classFilter = (document.getElementById('val-top-table-filter')||{}).value||'';
+  const snap = getValSnapshot(classFilter||undefined);
+  // Aggregate by item
+  const map = {};
+  for (const r of snap) {
+    if (!map[r.code]) map[r.code]={code:r.code,desc:r.desc,movement:r.movement,mvCode:r.mvCode,pg:r.pg,whseCode:r.whseCode,avgCost:r.avgCost,val:0,qty:0};
+    map[r.code].val += r.onHandVal;
+    map[r.code].qty += r.qtyOnHand;
+  }
+  // Build PO activity lookup from filtered rows
+  const poMap = {};
+  for (const r of state.filtered) {
+    if (!r.itemCode) continue;
+    if (!poMap[r.itemCode]) poMap[r.itemCode]={count:0,spend:0};
+    poMap[r.itemCode].count++;
+    poMap[r.itemCode].spend+=Math.abs(r.ordValueUSD);
+  }
+  const sorted = Object.values(map).sort((a,b)=>b.val-a.val).slice(0,40);
+  let html='';
+  sorted.forEach((x,i)=>{
+    const po=poMap[x.code]||{count:0,spend:0};
+    const risk=getDIRisk(x.movement);
+    const riskCls={critical:'risk-critical',high:'risk-high',medium:'risk-medium'};
+    html+=`<tr class="${riskCls[risk]||''}">
+      <td style="color:${MCG.muted};font-weight:600">${i+1}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:${MCG.navy}">${x.code}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${(x.desc||'').trim()}</td>
+      <td>${diBadge(x.movement)}</td>
+      <td style="font-family:var(--sans);font-size:0.65rem">${x.pg||'—'}</td>
+      <td><span style="font-family:var(--display);font-size:0.62rem;font-weight:600;color:${MCG.navy};background:rgba(27,46,92,0.08);padding:1px 6px;border-radius:2px">${x.whseCode||'—'}</span></td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(x.qty)}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(x.avgCost)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600">$${fmtUSD(x.val)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${po.count?fmtNum(po.count):'<span style="color:var(--text-light)">—</span>'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${po.spend?'$'+fmtUSD(po.spend):'<span style="color:var(--text-light)">No PO</span>'}</td>
+    </tr>`;
+  });
+  document.getElementById('val-top-tbody').innerHTML=html||'<tr><td colspan="11" class="no-data">No valuation data</td></tr>';
+}
+
+
+// ════════════════════════════════════════════════════════
+//  TRANSACTION / USAGE RENDERERS
+// ════════════════════════════════════════════════════════
+
+// Build a combined item profile: usage stats + inventory + DI + PO activity
+function getTxnItemProfiles() {
+  const poMap = {};
+  for (const r of state.filtered) {
+    if (!r.itemCode) continue;
+    if (!poMap[r.itemCode]) poMap[r.itemCode] = { count:0, spend:0, leadTimes:[] };
+    poMap[r.itemCode].count++;
+    poMap[r.itemCode].spend += Math.abs(r.ordValueUSD);
+    if (r.leadTime !== null && r.leadTime >= 0 && r.leadTime < 365)
+      poMap[r.itemCode].leadTimes.push(r.leadTime);
+  }
+  const profiles = [];
+  for (const [code, txn] of Object.entries(state.txnStats)) {
+    const invRecs  = state.valLookup[code] || [];
+    const di       = state.diLookup[code];
+    const movement = di ? di.movement.trim() : 'Not in DI';
+    const po       = poMap[code] || { count:0, spend:0, leadTimes:[] };
+    const totalInvQty = invRecs.reduce((s,r)=>s+r.qtyOnHand, 0);
+    const totalInvVal = invRecs.reduce((s,r)=>s+r.onHandVal,  0);
+    const avgCost     = invRecs[0]?.avgCost || 0;
+    const pg          = invRecs[0]?.pg || '';
+    const whseCode    = invRecs[0]?.whseCode || txn.warehouses[0] || '';
+    const avgLeadDays = po.leadTimes.length
+      ? po.leadTimes.reduce((a,b)=>a+b,0)/po.leadTimes.length : 30; // default 30d
+
+    // Coverage = qty on hand / avg daily usage
+    const coverageDays = txn.avgDaily > 0 ? totalInvQty / txn.avgDaily : Infinity;
+
+    // Reorder Point = avgDaily × avgLeadTime + safetyStock (1.5× lead time usage)
+    const safetyStock = txn.avgDaily * avgLeadDays * 1.5;
+    const rop         = txn.avgDaily * avgLeadDays + safetyStock;
+    // Suggested ROQ = basic EOQ approximation (or 30-day supply min)
+    const roq         = Math.max(txn.avgMonthly, txn.avgDaily * 30);
+
+    // Replenishment action
+    let replAction = 'ok';
+    if (coverageDays < avgLeadDays * 1.5)              replAction = 'urgent';
+    else if (coverageDays < avgLeadDays * 3)           replAction = 'soon';
+    else if (coverageDays > 365 || totalInvQty > roq * 6) replAction = 'hold';
+
+    profiles.push({
+      code, movement, pg, whseCode, avgCost,
+      txnAvgDaily: txn.avgDaily, txnAvgMonthly: txn.avgMonthly,
+      txnTotal: txn.total, txnCount: txn.txnCount,
+      txnTrend: txn.trend, txnCV: txn.cv,
+      txnLastDate: txn.lastDate, txnMonths: txn.months, txnMonthlyVals: txn.monthlyVals,
+      invQty: totalInvQty, invVal: totalInvVal,
+      coverageDays: isFinite(coverageDays) ? coverageDays : 9999,
+      rop, roq, avgLeadDays,
+      poCount: po.count, poSpend: po.spend,
+      replAction,
+      desc: txn.desc || (invRecs[0]?.desc) || '',
+    });
+  }
+  return profiles;
+}
+
+function coveragePill(days) {
+  if (days >= 9999) return `<span class="coverage-pill cov-none">No Stock</span>`;
+  if (days < 30)    return `<span class="coverage-pill cov-critical">🔴 ${Math.round(days)}d</span>`;
+  if (days < 60)    return `<span class="coverage-pill cov-low">🟠 ${Math.round(days)}d</span>`;
+  if (days < 120)   return `<span class="coverage-pill cov-medium">🟡 ${Math.round(days)}d</span>`;
+  if (days < 365)   return `<span class="coverage-pill cov-good">🟢 ${Math.round(days)}d</span>`;
+  return `<span class="coverage-pill cov-excess">🔵 ${Math.round(days)}d</span>`;
+}
+
+function trendIcon(trend) {
+  if (trend === 'increasing') return '<span class="trend-up">↑</span>';
+  if (trend === 'decreasing') return '<span class="trend-down">↓</span>';
+  return '<span class="trend-flat">→</span>';
+}
+
+function replBadge(action) {
+  const map = {
+    urgent: '<span class="rop-badge rop-urgent">🔴 ORDER URGENT</span>',
+    soon:   '<span class="rop-badge rop-soon">🟠 ORDER SOON</span>',
+    ok:     '<span class="rop-badge rop-ok">🟢 OK</span>',
+    hold:   '<span class="rop-badge rop-hold">🔵 HOLD — OVERSTOCK</span>',
+  };
+  return map[action] || '';
+}
+
+function renderTxnKPIs() {
+  const txn   = state.txnStats;
+  const items = Object.keys(txn);
+  const totalTxns = items.reduce((s,k)=>s+txn[k].txnCount, 0);
+  const profiles  = getTxnItemProfiles();
+
+  const critical = profiles.filter(p=>p.coverageDays < 30 && p.invQty > 0).length;
+  const low      = profiles.filter(p=>p.coverageDays >= 30 && p.coverageDays < 60 && p.invQty > 0).length;
+  const validCov = profiles.filter(p=>p.coverageDays < 9999 && p.invQty > 0);
+  const avgCov   = validCov.length ? validCov.reduce((s,p)=>s+p.coverageDays,0)/validCov.length : 0;
+
+  // PO items with no usage
+  const poItems  = new Set(state.filtered.map(r=>r.itemCode).filter(Boolean));
+  const usedItems= new Set(items);
+  const noUse    = [...poItems].filter(c=>!usedItems.has(c)).length;
+  const noPoUsed = items.filter(c=>!poItems.has(c)).length;
+
+  // Span info
+  const firstTxn = Object.values(txn)[0];
+  const spanDays = firstTxn?.spanDays || 75;
+
+  document.getElementById('kpi-txn-items').textContent    = fmtNum(items.length);
+  document.getElementById('kpi-txn-period').textContent   = `${fmtNum(totalTxns)} transactions · ${spanDays}d period`;
+  document.getElementById('kpi-txn-critical').textContent = fmtNum(critical);
+  document.getElementById('kpi-txn-low').textContent      = fmtNum(low);
+  document.getElementById('kpi-txn-avgcov').textContent   = avgCov ? Math.round(avgCov)+'d' : '—';
+  document.getElementById('kpi-txn-nopo').textContent     = fmtNum(noPoUsed);
+  document.getElementById('kpi-txn-nouse').textContent    = fmtNum(noUse);
+}
+
+function renderTxnTrendChart() {
+  const view = (document.getElementById('txn-trend-view')||{}).value || 'qty';
+  const txn  = state.txnStats;
+  // Aggregate by month across all items
+  const monthMap = {};
+  for (const s of Object.values(txn)) {
+    for (const [m, v] of Object.entries(s.months)) {
+      if (!monthMap[m]) monthMap[m] = {qty:0,items:new Set()};
+      monthMap[m].qty += v;
+      monthMap[m].items.add(Object.keys(txn).find(k=>txn[k].months[m]));
+    }
+  }
+  const sorted = Object.keys(monthMap).sort();
+  const labels = sorted.map(k=>{const[y,m]=k.split('-');return`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]} ${y}`;});
+  const vals   = sorted.map(k=>view==='qty'?monthMap[k].qty:(monthMap[k].items.size));
+  document.getElementById('txn-trend-badge').textContent = `${sorted.length} months`;
+  destroyChart('txn-trend');
+  const ctx = document.getElementById('chart-txn-trend').getContext('2d');
+  state.charts['txn-trend'] = new Chart(ctx, {
+    type:'bar',
+    data:{labels, datasets:[{
+      label: view==='qty'?'Total Quantity Consumed':'Items Consumed',
+      data:vals,
+      backgroundColor:'rgba(46,125,82,0.2)', borderColor:MCG.success, borderWidth:2,
+    }]},
+    options: mcgChartOpts(v=>view==='qty'?fmtNum(v):fmtNum(v))
+  });
+}
+
+function renderTxnTopChart() {
+  const txn = state.txnStats;
+  const sorted = Object.entries(txn).sort((a,b)=>b[1].total-a[1].total).slice(0,15);
+  const labels = sorted.map(([k])=>k.length>16?k.slice(0,16)+'…':k);
+  const vals   = sorted.map(([,v])=>v.total);
+  document.getElementById('txn-top-badge').textContent = `top 15 of ${Object.keys(txn).length}`;
+  destroyChart('txn-top');
+  const ctx = document.getElementById('chart-txn-top').getContext('2d');
+  state.charts['txn-top'] = new Chart(ctx, {
+    type:'bar', indexAxis:'y',
+    data:{labels, datasets:[{
+      label:'Total Qty Consumed',
+      data:vals,
+      backgroundColor:CHART_COLORS.map(c=>c+'33'), borderColor:CHART_COLORS, borderWidth:1.5,
+    }]},
+    options:{...mcgChartOpts(v=>fmtNum(v)), plugins:{...mcgChartOpts(v=>fmtNum(v)).plugins,legend:{display:false}}}
+  });
+}
+
+function renderTxnCoverageChart() {
+  const profiles = getTxnItemProfiles().filter(p=>p.invQty>0 && p.txnAvgDaily>0);
+  const buckets  = [
+    {label:'< 30 days',   min:0,   max:30,   color:'#B33030'},
+    {label:'30–60 days',  min:30,  max:60,   color:'#C05010'},
+    {label:'60–120 days', min:60,  max:120,  color:'#C4993A'},
+    {label:'120–365 days',min:120, max:365,  color:'#2E7D52'},
+    {label:'> 365 days',  min:365, max:9998, color:'#1B2E5C'},
+  ];
+  const counts = buckets.map(b=>profiles.filter(p=>p.coverageDays>=b.min&&p.coverageDays<b.max).length);
+  document.getElementById('txn-cov-badge').textContent = `${profiles.length} items tracked`;
+  destroyChart('txn-coverage');
+  const ctx = document.getElementById('chart-txn-coverage').getContext('2d');
+  state.charts['txn-coverage'] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:buckets.map(b=>b.label),
+      datasets:[{
+        label:'Items',
+        data:counts,
+        backgroundColor:buckets.map(b=>b.color+'33'),
+        borderColor:buckets.map(b=>b.color),
+        borderWidth:2,
+      }]
+    },
+    options:mcgChartOpts(v=>fmtNum(v))
+  });
+}
+
+function renderTxnVsInvChart() {
+  // Show top 12 items by usage — overlay monthly consumption vs on-hand value
+  const profiles = getTxnItemProfiles()
+    .filter(p=>p.invVal>0 && p.txnAvgMonthly>0)
+    .sort((a,b)=>b.txnAvgMonthly-a.txnAvgMonthly)
+    .slice(0,12);
+  const labels   = profiles.map(p=>p.code.length>14?p.code.slice(0,14)+'…':p.code);
+  const invVals  = profiles.map(p=>p.invVal);
+  const useVals  = profiles.map(p=>p.txnAvgMonthly * (p.avgCost||1));
+  destroyChart('txn-vs-inv');
+  const ctx = document.getElementById('chart-txn-vs-inv').getContext('2d');
+  state.charts['txn-vs-inv'] = new Chart(ctx, {
+    type:'bar',
+    data:{labels, datasets:[
+      {label:'On-Hand Value (USD)',          data:invVals,  backgroundColor:MCG.navy+'33',   borderColor:MCG.navy,    borderWidth:1.5},
+      {label:'Est. Monthly Consumption (USD)',data:useVals, backgroundColor:MCG.success+'33',borderColor:MCG.success, borderWidth:1.5},
+    ]},
+    options: mcgChartOpts(v=>'$'+fmtUSD(v))
+  });
+}
+
+// ── STOCKOUT RISK TABLE ────────────────────────────────
+function renderTxnRiskTable() {
+  const filter = (document.getElementById('txn-risk-filter')||{}).value||'';
+  const levels = {critical: p=>p.coverageDays<30, low: p=>p.coverageDays>=30&&p.coverageDays<60, medium: p=>p.coverageDays>=60&&p.coverageDays<120};
+  let rows = getTxnItemProfiles().filter(p=>p.invQty>0 && p.txnAvgDaily>0);
+  if (filter && levels[filter]) rows = rows.filter(levels[filter]);
+  else rows = rows.filter(p=>p.coverageDays<120); // default: show at-risk only
+  rows.sort((a,b)=>a.coverageDays-b.coverageDays);
+  state.txnRiskRows = rows;
+  state.txnRiskPage = 0;
+  document.getElementById('txn-risk-count').textContent = fmtNum(rows.length)+' alerts';
+  renderTxnRiskPage();
+}
+
+function renderTxnRiskPage() {
+  const PAGE  = state.TXN_RISK_PAGE_SIZE;
+  const page  = state.txnRiskRows.slice(state.txnRiskPage*PAGE,(state.txnRiskPage+1)*PAGE);
+  let html = '';
+  for (const p of page) {
+    html += `<tr>
+      <td>${coveragePill(p.coverageDays)}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:${MCG.navy}">${p.code}</td>
+      <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis">${p.desc.trim()}</td>
+      <td>${diBadge(p.movement)}</td>
+      <td><span style="font-family:var(--display);font-size:0.62rem;font-weight:600;color:${MCG.navy};background:rgba(27,46,92,0.08);padding:1px 6px;border-radius:2px">${p.whseCode||'—'}</span></td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(p.invQty)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${p.txnAvgDaily.toFixed(2)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600;color:${p.coverageDays<30?MCG.danger:p.coverageDays<60?'#C05010':'inherit'}">${Math.round(p.coverageDays)}</td>
+      <td style="font-family:var(--mono)">${p.txnLastDate?fmtDateShort(p.txnLastDate):'—'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(Math.round(p.rop))}</td>
+      <td style="text-align:right;font-family:var(--mono);color:${MCG.info}">${fmtNum(Math.round(p.roq))}</td>
+    </tr>`;
+  }
+  document.getElementById('txn-risk-tbody').innerHTML = html ||
+    '<tr><td colspan="11" class="no-data">No stockout risk items with current filters</td></tr>';
+  renderPagination('txn-risk-pagination', state.txnRiskRows.length, PAGE, state.txnRiskPage, 'txnRiskPage');
+}
+
+function txnRiskPage(p) {
+  if(p<0||p>=Math.ceil(state.txnRiskRows.length/state.TXN_RISK_PAGE_SIZE)) return;
+  state.txnRiskPage=p; renderTxnRiskPage();
+}
+
+// ── REPLENISHMENT TABLE ────────────────────────────────
+function renderTxnReplTable() {
+  const filter = (document.getElementById('txn-repl-filter')||{}).value||'';
+  let rows = getTxnItemProfiles().filter(p=>p.txnAvgDaily>0);
+  if (filter) rows = rows.filter(p=>p.replAction===filter);
+  rows.sort((a,b)=>{
+    const o={urgent:0,soon:1,ok:2,hold:3};
+    return (o[a.replAction]??2)-(o[b.replAction]??2)||a.coverageDays-b.coverageDays;
+  });
+  state.txnReplRows = rows;
+  state.txnReplPage = 0;
+  renderTxnReplPage();
+}
+
+function renderTxnReplPage() {
+  const PAGE = state.TXN_REPL_PAGE_SIZE;
+  const page = state.txnReplRows.slice(state.txnReplPage*PAGE,(state.txnReplPage+1)*PAGE);
+  let html = '';
+  for (const p of page) {
+    html += `<tr>
+      <td>${replBadge(p.replAction)}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:${MCG.navy}">${p.code}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${p.desc.trim()}</td>
+      <td>${diBadge(p.movement)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(p.invQty)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${p.txnAvgDaily.toFixed(2)}/d</td>
+      <td style="text-align:right;font-family:var(--mono)">${Math.round(p.avgLeadDays)}d</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:600;color:${MCG.info}">${fmtNum(Math.round(p.rop))}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(Math.round(p.roq))}</td>
+      <td style="text-align:right;font-family:var(--mono)">${coveragePill(p.coverageDays)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${p.poCount?fmtNum(p.poCount)+' POs':'<span style="color:var(--text-light)">—</span>'}</td>
+    </tr>`;
+  }
+  document.getElementById('txn-repl-tbody').innerHTML = html ||
+    '<tr><td colspan="11" class="no-data">No replenishment data available</td></tr>';
+  renderPagination('txn-repl-pagination', state.txnReplRows.length, PAGE, state.txnReplPage, 'txnReplPage');
+}
+
+function txnReplPage(p) {
+  if(p<0||p>=Math.ceil(state.txnReplRows.length/state.TXN_REPL_PAGE_SIZE)) return;
+  state.txnReplPage=p; renderTxnReplPage();
+}
+
+// ── MISMATCH TABLE ─────────────────────────────────────
+function renderTxnMismatchTable() {
+  const filter = (document.getElementById('txn-mismatch-filter')||{}).value||'';
+  const poItems  = new Set(state.filtered.map(r=>r.itemCode).filter(Boolean));
+  const usedItems= new Set(Object.keys(state.txnStats));
+  const poMap = {};
+  for (const r of state.filtered) {
+    if (!r.itemCode) continue;
+    if (!poMap[r.itemCode]) poMap[r.itemCode]={count:0,spend:0};
+    poMap[r.itemCode].count++; poMap[r.itemCode].spend+=Math.abs(r.ordValueUSD);
+  }
+
+  const rows = [];
+
+  // 1. Used but no PO
+  if (!filter || filter==='used_no_po') {
+    for (const code of usedItems) {
+      if (poItems.has(code)) continue;
+      const txn = state.txnStats[code];
+      const invRecs = state.valLookup[code]||[];
+      const di  = state.diLookup[code];
+      rows.push({
+        type:'used_no_po', typeLabel:'Used — No PO', typeColor:'#1E5FA8',
+        code, desc:txn.desc,
+        movement: di?di.movement.trim():'Not in DI',
+        avgMonthly: txn.avgMonthly, poCount:0, poSpend:0,
+        invQty: invRecs.reduce((s,r)=>s+r.qtyOnHand,0),
+        invVal: invRecs.reduce((s,r)=>s+r.onHandVal,0),
+      });
+    }
+  }
+
+  // 2. Ordered but no usage
+  if (!filter || filter==='ordered_no_use') {
+    for (const code of poItems) {
+      if (usedItems.has(code)) continue;
+      const po = poMap[code]||{count:0,spend:0};
+      const invRecs = state.valLookup[code]||[];
+      const di  = state.diLookup[code];
+      rows.push({
+        type:'ordered_no_use', typeLabel:'Ordered — No Usage', typeColor:'#C05010',
+        code, desc: invRecs[0]?.desc||'',
+        movement: di?di.movement.trim():'Not in DI',
+        avgMonthly:0, poCount:po.count, poSpend:po.spend,
+        invQty: invRecs.reduce((s,r)=>s+r.qtyOnHand,0),
+        invVal: invRecs.reduce((s,r)=>s+r.onHandVal,0),
+      });
+    }
+  }
+
+  // 3. Dead Stock with usage
+  if (!filter || filter==='dead_but_used') {
+    for (const code of usedItems) {
+      const di = state.diLookup[code];
+      const movement = di?di.movement.trim():'Not in DI';
+      if (!movement.includes('Dead Stock')) continue;
+      const txn = state.txnStats[code];
+      const invRecs = state.valLookup[code]||[];
+      const po  = poMap[code]||{count:0,spend:0};
+      rows.push({
+        type:'dead_but_used', typeLabel:'Dead Stock — Has Usage', typeColor:'#B33030',
+        code, desc:txn.desc, movement,
+        avgMonthly:txn.avgMonthly, poCount:po.count, poSpend:po.spend,
+        invQty: invRecs.reduce((s,r)=>s+r.qtyOnHand,0),
+        invVal: invRecs.reduce((s,r)=>s+r.onHandVal,0),
+      });
+    }
+  }
+
+  // 4. Usage spike (CV > 0.7 = volatile demand)
+  if (!filter || filter==='spike') {
+    for (const [code, txn] of Object.entries(state.txnStats)) {
+      if (txn.cv <= 0.7) continue;
+      const invRecs = state.valLookup[code]||[];
+      const di  = state.diLookup[code];
+      const po  = poMap[code]||{count:0,spend:0};
+      rows.push({
+        type:'spike', typeLabel:'Volatile Usage (CV>0.7)', typeColor:'#7C5CBF',
+        code, desc:txn.desc,
+        movement: di?di.movement.trim():'Not in DI',
+        avgMonthly:txn.avgMonthly, poCount:po.count, poSpend:po.spend,
+        invQty: invRecs.reduce((s,r)=>s+r.qtyOnHand,0),
+        invVal: invRecs.reduce((s,r)=>s+r.onHandVal,0),
+      });
+    }
+  }
+
+  rows.sort((a,b)=>b.invVal-a.invVal);
+  const MAX = 50;
+  let html = '';
+  rows.slice(0,MAX).forEach(r=>{
+    html+=`<tr>
+      <td><span style="font-family:var(--display);font-size:0.6rem;font-weight:700;color:${r.typeColor};background:${r.typeColor}18;padding:2px 7px;border-radius:2px">${r.typeLabel}</span></td>
+      <td style="font-family:var(--mono);font-weight:600;color:${MCG.navy}">${r.code}</td>
+      <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis">${(r.desc||'').trim()}</td>
+      <td>${diBadge(r.movement)}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(Math.round(r.avgMonthly))}/mo</td>
+      <td style="text-align:right;font-family:var(--mono)">${r.poCount?fmtNum(r.poCount):'<span style="color:var(--text-light)">—</span>'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${r.poSpend?'$'+fmtUSD(r.poSpend):'<span style="color:var(--text-light)">—</span>'}</td>
+      <td style="text-align:right;font-family:var(--mono)">${fmtNum(r.invQty)}</td>
+      <td style="text-align:right;font-family:var(--mono)">$${fmtUSD(r.invVal)}</td>
+      <td><span style="font-family:var(--display);font-size:0.62rem;font-weight:700;color:${r.typeColor}">${r.type==='spike'?'⚡ Volatile':r.type==='dead_but_used'?'💀 Contradiction':r.type==='used_no_po'?'🔁 No Reorder':'💤 Unused PO'}</span></td>
+    </tr>`;
+  });
+  document.getElementById('txn-mismatch-tbody').innerHTML = html ||
+    '<tr><td colspan="10" class="no-data">No demand–supply mismatches detected</td></tr>';
+}
+
+// Shared pagination helper
+function renderPagination(containerId, totalRows, pageSize, currentPage, pageFn) {
+  const total = Math.ceil(totalRows/pageSize);
+  let html = '';
+  if (total > 1) {
+    html += `<button class="page-btn" onclick="${pageFn}(${currentPage-1})" ${currentPage===0?'disabled':''}>‹</button>`;
+    const s=Math.max(0,currentPage-2), e=Math.min(total-1,currentPage+2);
+    for(let i=s;i<=e;i++) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="${pageFn}(${i})">${i+1}</button>`;
+    html+=`<button class="page-btn" onclick="${pageFn}(${currentPage+1})" ${currentPage>=total-1?'disabled':''}>›</button>`;
+    html+=`<span>of ${total} pages</span>`;
+  }
+  document.getElementById(containerId).innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function fmtNum(n){if(n==null||isNaN(n))return'—';return Math.round(n).toLocaleString('en-US');}
+function fmtUSD(v){if(v==null)return'—';const a=Math.abs(v);if(a>=1e6)return(v/1e6).toFixed(2)+'M';if(a>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(2);}
+function fmtDateShort(d){if(!d)return'—';return`${d.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]} ${d.getFullYear()}`;}
+
+function statusBadge(s){
+  const map={'Completed':'completed','Goods Returned':'returned','In Transit':'transit','On Order':'order','Goods Updated':'updated','Cancelled':'other','Ready to Print':'order','Backorder':'other'};
+  return`<span class="tag tag-${map[s]||'other'}">${s||'—'}</span>`;
+}
+
+function backToUpload(){
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('nav-ticker').style.display='none';
+  document.getElementById('nav-refresh-btn').style.display='none';
+  document.getElementById('nav-upload-btn').style.display='none';
+  document.getElementById('upload-screen').style.display='';
+  // Show manual upload section directly since user clicked "Manual Upload"
+  showManualUpload();
+}
+</script>
+</body>
+</html>
